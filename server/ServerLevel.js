@@ -25,22 +25,22 @@ class ServerLevel {
   generate() {
     const rng = new SeededRandom(this.seed);
 
-    // Static level with platforms (matches client)
+    // Static level with platforms - sized to fit viewport without scrolling (matches client)
     this.levelData = {
-      width: 1600,
+      width: 800,
       height: 600,
       groundHeight: 50,
       platforms: []
     };
 
-    // Generate random platforms
-    const numPlatforms = 5 + Math.floor(rng.random() * 3); // 5-7 platforms
+    // Generate fewer random platforms for smaller arena
+    const numPlatforms = 3 + Math.floor(rng.random() * 2); // 3-4 platforms
 
     for (let i = 0; i < numPlatforms; i++) {
       const platform = {
-        x: 150 + rng.random() * (this.levelData.width - 400),
+        x: 100 + rng.random() * (this.levelData.width - 300),
         y: 150 + rng.random() * 250,
-        width: 150 + rng.random() * 200,
+        width: 100 + rng.random() * 150,
         height: 20
       };
       this.levelData.platforms.push(platform);

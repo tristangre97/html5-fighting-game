@@ -31,22 +31,22 @@ function SeededRandom(seed) {
 function buildStaticLevel_(seed) {
   var rng = new SeededRandom(seed);
 
-  // Static level with platforms
+  // Static level with platforms - sized to fit viewport without scrolling
   var levelData = {
-    width: 1600,  // Larger static arena
+    width: 800,  // Smaller arena that fits on screen
     height: 600,
     groundHeight: 50,  // Base ground height
     platforms: []
   };
 
-  // Generate random platforms
-  var numPlatforms = 5 + Math.floor(rng.random() * 3); // 5-7 platforms
+  // Generate fewer random platforms for smaller arena
+  var numPlatforms = 3 + Math.floor(rng.random() * 2); // 3-4 platforms
 
   for (var i = 0; i < numPlatforms; i++) {
     var platform = {
-      x: 150 + rng.random() * (levelData.width - 400),  // Random x position
+      x: 100 + rng.random() * (levelData.width - 300),  // Random x position
       y: 150 + rng.random() * 250,  // Random height (150-400)
-      width: 150 + rng.random() * 200,  // Random width (150-350)
+      width: 100 + rng.random() * 150,  // Random width (100-250)
       height: 20  // Fixed platform thickness
     };
     levelData.platforms.push(platform);
