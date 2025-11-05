@@ -107,15 +107,8 @@ Window.prototype.right = function() {
 };
 
 Window.prototype.update = function(dt) {
-  // Update camera to follow players (centered between them)
-  if (player1 && player2 && level) {
-    var midX = (player1.x + player2.x) / 2;
-    var levelWidth = level.getWidth();
-
-    // Center camera on midpoint, but keep within bounds
-    this.cameraX = midX - this.width / 2;
-    this.cameraX = Math.max(0, Math.min(this.cameraX, levelWidth - this.width));
-  }
+  // No camera scrolling - static view
+  this.cameraX = 0;
 
   // Keep players within level bounds
   if (level) {
@@ -140,8 +133,7 @@ Window.prototype.drawPlayer = function(player) {
   var y = player.y;
   player.sprite.drawAt(this.context, x, player.y, !player.facing_right);
 
-  // Draw player name above head
-  this.drawPlayerName(player, x, y);
+  // Player names removed for now
 
   if (DEBUG) {
     // Draw dot at foot location
