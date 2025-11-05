@@ -56,6 +56,7 @@ var player2;
 var interval;
 var level;
 var lastTimeStamp = 0;
+var game_state;
 
 var JUMP_TIME_MS = 800;  // jump time in milliseconds
 var JUMP_HEIGHT = 100;  // in pixels
