@@ -6,14 +6,17 @@ A 2D fighting game built with HTML5 Canvas, now featuring **online multiplayer**
 
 - **Local 2-Player Mode**: Play with a friend on the same keyboard
 - **Online Multiplayer**: Battle players from anywhere with real-time networking
+- **High Performance**: 60-144 FPS with configurable frame rate for buttery-smooth gameplay
+- **Server-Generated Terrain**: Seeded procedural generation ensures consistent levels across all clients
 - **Gamepad/Controller Support**: Full Xbox, PlayStation, and generic controller support
 - **Mobile Touch Controls**: On-screen virtual joystick and buttons for mobile devices
+- **Modern UI**: Beautiful Tailwind CSS interface with glassmorphic design
 - **Responsive Design**: Automatically adapts to desktop, tablet, and mobile
+- **Real-time Health Bars**: Live HUD display with smooth animations
 - Server-authoritative game logic to prevent cheating
-- Real-time synchronization using WebSockets (Socket.IO)
+- Real-time synchronization using WebSockets (Socket.IO) at 60fps
 - Automatic matchmaking system
 - Physics-based combat with punches, throws, and blocking
-- Procedurally generated terrain
 
 ## Prerequisites
 
@@ -253,10 +256,23 @@ To deploy to a cloud platform (Heroku, Railway, etc.):
 
 ## Performance Notes
 
-- **Update Rate**: 30 updates per second (same as original game)
-- **Network Traffic**: ~1-2 KB/sec per player
+### Frame Rate
+- **Client Rendering**: 60-144 FPS using requestAnimationFrame (configurable)
+- **Server Update Rate**: 60 updates per second for responsive gameplay
+- **Frame Time Limiting**: Optional frame rate cap for consistent performance
+- **Debug Mode**: Press `P` to display real-time FPS counter
+
+### Network Performance
+- **Server Tick Rate**: 60 Hz (16.67ms per update)
+- **Network Traffic**: ~0.5-1 KB/sec per player (optimized with seed-based terrain)
 - **Latency Tolerance**: Best with <200ms ping
 - **Concurrent Games**: Server can handle multiple simultaneous matches
+
+### Optimization Features
+- **Seeded Terrain Generation**: Send only seed (4 bytes) instead of full terrain data (~40KB)
+- **requestAnimationFrame**: Browser-optimized rendering for better performance
+- **Frame-Independent Physics**: Smooth gameplay at any frame rate
+- **Efficient State Updates**: Delta-time calculations ensure consistent physics
 
 ## Known Limitations
 

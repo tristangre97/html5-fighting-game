@@ -72,6 +72,11 @@ var touchControls = null;
 var player1JumpPressed = false;
 var player2JumpPressed = false;
 
+// FPS configuration
+var TARGET_FPS = 60; // Target 60fps (can be increased to 120)
+var FRAME_TIME = 1000 / TARGET_FPS;
+var animationFrameId = null;
+
 function resetGameState() {
   level = new Level();
   win.reset();
@@ -213,13 +218,24 @@ function handleOnlineInput() {
   }
 }
 
-function update() {
-  var now = new Date().getTime();
+function update(timestamp) {
+  // Request next frame
+  animationFrameId = requestAnimationFrame(update);
+
+  // Calculate delta time
+  var now = timestamp || new Date().getTime();
   if (lastTimeStamp == 0) {
-    var dt = 0;
-  } else {
-    dt = now - lastTimeStamp;
+    lastTimeStamp = now;
+    return;
   }
+
+  var dt = now - lastTimeStamp;
+
+  // Frame rate limiting (optional, comment out for unlimited FPS)
+  if (dt < FRAME_TIME) {
+    return;
+  }
+
   lastTimeStamp = now;
 
   if (game_state == STATE_PLAYING) {
@@ -276,7 +292,8 @@ function update() {
   win.draw();
 
   if (DEBUG) {
-    $('#debug').html('Debug:<br>Key: ' + keys.lastKey).removeClass('hidden');
+    var fps = Math.round(1000 / dt);
+    $('#debug').html('FPS: ' + fps + '<br>Key: ' + keys.lastKey).removeClass('hidden');
   }
 }
 
@@ -335,9 +352,8 @@ function startOnlineMode() {
     $('#status').addClass('hidden');
     $('#game-hud').removeClass('hidden');
 
-    // Initialize game with server state
-    level = new Level();
-    level.heights = initialState.level.heights;
+    // Initialize game with server-generated terrain seed
+    level = new Level(initialState.level.seed);
 
     win.reset();
 
@@ -457,6 +473,13 @@ $(document).ready(function() {
   touchControls = new TouchControlsManager();
   touchControls.init();
 
+  // Set up FPS selection
+  $('#fps-select').change(function() {
+    TARGET_FPS = parseInt($(this).val());
+    FRAME_TIME = 1000 / TARGET_FPS;
+    console.log('FPS changed to:', TARGET_FPS);
+  });
+
   // Set up mode selection buttons
   $('#local-btn').click(function() {
     startLocalMode();
@@ -489,7 +512,10 @@ $(document).ready(function() {
       if (win) win.should_scroll = !win.should_scroll;
     }
     if (event.which == KEY_ESC) { // Stop the game (helpful when developing)
-      clearInterval(interval);
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+      }
     }
   });
 
@@ -497,5 +523,6 @@ $(document).ready(function() {
     if (keys) keys.up(event.which);
   });
 
-  interval = setInterval(update, 30);
+  // Start game loop with requestAnimationFrame for smoother performance
+  animationFrameId = requestAnimationFrame(update);
 });
