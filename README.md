@@ -6,6 +6,9 @@ A 2D fighting game built with HTML5 Canvas, now featuring **online multiplayer**
 
 - **Local 2-Player Mode**: Play with a friend on the same keyboard
 - **Online Multiplayer**: Battle players from anywhere with real-time networking
+- **Gamepad/Controller Support**: Full Xbox, PlayStation, and generic controller support
+- **Mobile Touch Controls**: On-screen virtual joystick and buttons for mobile devices
+- **Responsive Design**: Automatically adapts to desktop, tablet, and mobile
 - Server-authoritative game logic to prevent cheating
 - Real-time synchronization using WebSockets (Socket.IO)
 - Automatic matchmaking system
@@ -54,24 +57,56 @@ The server will start on `http://localhost:3000` by default.
 
 ### Controls
 
-#### Local Mode - Player 1
+The game supports **three input methods**: keyboard, gamepad/controller, and mobile touch controls.
+
+#### Keyboard Controls
+
+**Local Mode - Player 1**
 - **A/D**: Move left/right
 - **W**: Jump
 - **R**: Punch
 - **T**: Throw
 
-#### Local Mode - Player 2
+**Local Mode - Player 2**
 - **Left/Right Arrow**: Move left/right
 - **Up Arrow**: Jump
 - **< (Comma)**: Punch
 - **> (Period)**: Throw
 
-#### Online Mode
+**Online Mode**
 You can use either set of controls:
 - **A/D or Arrow Keys**: Move
 - **W or Up Arrow**: Jump
 - **R or <**: Punch
 - **T or >**: Throw
+
+#### Gamepad/Controller Controls
+
+Supports Xbox, PlayStation, and standard gamepads:
+- **Left Stick or D-Pad**: Move left/right
+- **A Button (Xbox) / X Button (PlayStation)**: Jump
+- **B Button (Xbox) / Circle Button (PlayStation)**: Punch
+- **X Button (Xbox) / Square Button (PlayStation)**: Throw
+- **Y Button (Xbox) / Triangle Button (PlayStation)**: Block
+- **Right Bumper (RB/R1)**: Alternative Punch
+- **Right Trigger (RT/R2)**: Alternative Throw
+- **Left Bumper (LB/L1)**: Alternative Block
+
+**Local Mode**: Player 1 uses gamepad 1, Player 2 uses gamepad 2
+**Online Mode**: Use any connected gamepad
+
+Controllers are automatically detected when connected. A notification will appear when a controller is connected or disconnected.
+
+#### Mobile Touch Controls
+
+On mobile devices, virtual on-screen controls automatically appear:
+- **Virtual Joystick** (left side): Move left/right
+- **Jump Button** (green, top right): Jump
+- **Punch Button** (red, middle right): Punch
+- **Throw Button** (orange, bottom right): Throw
+- **Block Button** (blue, top middle right): Block
+
+Touch controls are automatically enabled on mobile devices and hidden on desktop.
 
 ### Combat Mechanics
 
@@ -97,6 +132,8 @@ Reduce your opponent's health to 0 to win!
 
 - **network.js**: WebSocket client manager
 - **gamejam.js**: Game controller supporting both local and online modes
+- **gamepad.js**: Gamepad/controller input manager
+- **touchcontrols.js**: Mobile touch controls manager
 - **player.js**: Client-side player rendering and prediction
 - **window.js**: Canvas rendering
 - **level.js**: Level rendering
@@ -139,15 +176,17 @@ html5-fighting-game/
 │   └── ServerLevel.js       # Server-side level generation
 ├── server.js                # Express + Socket.IO server
 ├── network.js               # Client-side network manager
-├── gamejam.js              # Game controller (local + online)
-├── player.js               # Client player class
-├── window.js               # Canvas rendering
-├── level.js                # Level rendering
-├── sprite.js               # Sprite animation
-├── index.html              # Game UI
-├── style.css               # Styles
-├── package.json            # Node.js dependencies
-└── README.md               # This file
+├── gamepad.js               # Gamepad/controller input manager
+├── touchcontrols.js         # Mobile touch controls manager
+├── gamejam.js               # Game controller (local + online)
+├── player.js                # Client player class
+├── window.js                # Canvas rendering
+├── level.js                 # Level rendering
+├── sprite.js                # Sprite animation
+├── index.html               # Game UI with touch controls
+├── style.css                # Styles
+├── package.json             # Node.js dependencies
+└── README.md                # This file
 ```
 
 ## Testing Multiplayer
@@ -159,6 +198,40 @@ To test online multiplayer locally:
 3. In both windows, navigate to `http://localhost:3000`
 4. Click "Online Multiplayer" in both windows
 5. You should get matched together!
+
+## Testing Controllers and Mobile
+
+### Testing Gamepad/Controller Support
+
+1. Connect your Xbox, PlayStation, or generic gamepad to your computer
+2. Start the server and navigate to `http://localhost:3000`
+3. A notification will appear confirming the controller is connected
+4. Select either Local or Online mode
+5. Use the gamepad buttons to control your character
+
+**Testing Two Controllers (Local Mode):**
+1. Connect two gamepads to your computer
+2. Select "Local 2-Player" mode
+3. Player 1 uses gamepad 1, Player 2 uses gamepad 2
+
+### Testing Mobile Touch Controls
+
+**Using Browser DevTools:**
+1. Start the server: `npm start`
+2. Open Chrome DevTools (F12)
+3. Click "Toggle Device Toolbar" (Ctrl+Shift+M)
+4. Select a mobile device (e.g., iPhone, iPad, Android)
+5. Navigate to `http://localhost:3000`
+6. Touch controls should automatically appear
+
+**Testing on Actual Mobile Device:**
+1. Ensure your mobile device is on the same network as your computer
+2. Find your computer's local IP address (e.g., 192.168.1.100)
+3. Start the server: `npm start`
+4. On your mobile device, navigate to `http://[YOUR_IP]:3000`
+5. Touch controls will automatically appear
+
+**Tip**: For mobile testing, you may need to allow incoming connections through your firewall.
 
 ## Deployment
 
@@ -202,7 +275,9 @@ To deploy to a cloud platform (Heroku, Railway, etc.):
 - [ ] Player statistics and leaderboards
 - [ ] Multiple character selection
 - [ ] Power-ups and special moves
-- [ ] Mobile touch controls
+- [ ] Vibration/haptic feedback for controllers and mobile
+- [ ] Customizable control mappings
+- [ ] Voice chat support
 
 ## License
 
@@ -213,8 +288,10 @@ Multiplayer implementation copyright 2025
 
 ## Credits
 
-- Original game developed for a Google game jam
-- Multiplayer implementation adds Node.js/Express/Socket.IO networking
+- Original game developed for a Google game jam (2010)
+- Multiplayer implementation adds Node.js/Express/Socket.IO networking (2025)
+- Gamepad/controller support using standard Gamepad API (2025)
+- Mobile touch controls with responsive design (2025)
 
 ## Troubleshooting
 
@@ -235,6 +312,31 @@ Multiplayer implementation copyright 2025
 ### No opponent found
 - You need two players to connect simultaneously
 - Open another browser window to test locally
+
+### Controller not detected
+- Make sure your controller is properly connected
+- Try reconnecting the controller
+- Check if the controller works in other browser games
+- Some browsers have better gamepad support (Chrome/Edge recommended)
+- Press any button on the controller after connecting
+
+### Touch controls not appearing
+- Touch controls only appear on mobile devices or touchscreen laptops
+- Try using browser DevTools device emulation mode
+- Check that screen width is less than 1024px
+- Refresh the page after device detection
+
+### Touch controls not responsive
+- Ensure you're not accidentally triggering mouse/keyboard input
+- Try reloading the page
+- Check that JavaScript is enabled
+- Clear browser cache and reload
+
+### Mobile game too small/large
+- The game canvas automatically scales to fit the screen
+- Try rotating your device (landscape usually works better)
+- Zoom out if the game appears too large
+- On some devices, full-screen mode works better
 
 ## Contributing
 
