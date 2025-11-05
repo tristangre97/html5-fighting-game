@@ -27,57 +27,122 @@ function SeededRandom(seed) {
   };
 }
 
-function buildLevel_(seed) {
-  var level = [];
+// Platform structure: {x, y, width, height}
+function buildStaticLevel_(seed) {
   var rng = new SeededRandom(seed);
-  var height = 100;
-  var change = 0;
 
-  for (var i = 0; i < 5000; i++) {
-    change += (rng.random() - 0.5) * 20;
-    change = Math.max(-50, Math.min(50, change));
-    height += change;
-    height = Math.max(0, Math.min(400, height));
+  // Static level with platforms
+  var levelData = {
+    width: 1600,  // Larger static arena
+    height: 600,
+    groundHeight: 50,  // Base ground height
+    platforms: []
+  };
 
-    // Randomly create holes
-    if (rng.random() < 0.01) {
-      level.push(-100);
-    } else {
-      level.push(height);
-    }
+  // Generate random platforms
+  var numPlatforms = 5 + Math.floor(rng.random() * 3); // 5-7 platforms
+
+  for (var i = 0; i < numPlatforms; i++) {
+    var platform = {
+      x: 150 + rng.random() * (levelData.width - 400),  // Random x position
+      y: 150 + rng.random() * 250,  // Random height (150-400)
+      width: 150 + rng.random() * 200,  // Random width (150-350)
+      height: 20  // Fixed platform thickness
+    };
+    levelData.platforms.push(platform);
   }
-  return level;
+
+  return levelData;
 }
 
 function Level(seed) {
   // Generate terrain from seed (or create random seed for local mode)
   this.seed = seed || Math.floor(Math.random() * 1000000);
-  this.level = buildLevel_(this.seed);
-  this.BLOCK_SIZE=100;
-
+  this.levelData = buildStaticLevel_(this.seed);
+  this.BLOCK_SIZE = 100;
 
   this.image1_ = new Image();
   $(this.image1_).attr('src', 'ground1.png');
   this.image2_ = new Image();
   $(this.image2_).attr('src', 'ground2.png');
 
-  this.drawLevel = function(context, left_x, width) {
-    for (var x = left_x; x <= left_x + width; x += this.BLOCK_SIZE) {
-      var index = this.pixelToHeightIndex_(x);
-      var height = this.getHeightAtPoint(x);
-      var image;
-      if (index % 2) { image = this.image1_ } else { image = this.image2_};
-      context.drawImage(image, 0, 0, 100, 600, 
-         index * this.BLOCK_SIZE - left_x, height - 600, 100, 600);
+  // Draw the entire static level
+  this.drawLevel = function(context) {
+    // Draw ground
+    var groundY = this.levelData.groundHeight;
+    var numBlocks = Math.ceil(this.levelData.width / this.BLOCK_SIZE);
+
+    for (var i = 0; i < numBlocks; i++) {
+      var image = (i % 2) ? this.image1_ : this.image2_;
+      context.drawImage(image, 0, 0, 100, 600,
+        i * this.BLOCK_SIZE, groundY - 600, 100, 600);
+    }
+
+    // Draw platforms using the same grass texture
+    for (var i = 0; i < this.levelData.platforms.length; i++) {
+      var platform = this.levelData.platforms[i];
+      this.drawPlatform(context, platform);
     }
   }
-  
-  this.getHeightAtPoint = function(x) {
-    var index = this.pixelToHeightIndex_(x);
-    return this.level[index];
+
+  this.drawPlatform = function(context, platform) {
+    // Draw platform using grass texture
+    var numBlocks = Math.ceil(platform.width / this.BLOCK_SIZE);
+
+    for (var i = 0; i < numBlocks; i++) {
+      var image = (i % 2) ? this.image1_ : this.image2_;
+      var blockX = platform.x + i * this.BLOCK_SIZE;
+      var blockWidth = Math.min(this.BLOCK_SIZE, platform.width - i * this.BLOCK_SIZE);
+
+      // Draw scaled grass texture
+      context.drawImage(image, 0, 0, 100, 600,
+        blockX, platform.y - 600, blockWidth, 600);
+    }
   }
-  
-  this.pixelToHeightIndex_ = function(x) {
-    return parseInt(x / this.BLOCK_SIZE);
+
+  // Get height at position (supports both ground and platforms)
+  this.getHeightAtPoint = function(x) {
+    // Check if player is on a platform
+    for (var i = 0; i < this.levelData.platforms.length; i++) {
+      var platform = this.levelData.platforms[i];
+      if (x >= platform.x && x <= platform.x + platform.width) {
+        return platform.y + platform.height;
+      }
+    }
+
+    // Return ground height
+    return this.levelData.groundHeight;
+  }
+
+  // Check if position is on a platform (for more precise collision)
+  this.getPlatformAt = function(x, y) {
+    for (var i = 0; i < this.levelData.platforms.length; i++) {
+      var platform = this.levelData.platforms[i];
+      if (x >= platform.x &&
+          x <= platform.x + platform.width &&
+          y >= platform.y &&
+          y <= platform.y + platform.height + 10) {  // Small tolerance
+        return platform;
+      }
+    }
+    return null;
+  }
+
+  // Get all platforms (for collision detection)
+  this.getPlatforms = function() {
+    return this.levelData.platforms;
+  }
+
+  // Get level bounds
+  this.getWidth = function() {
+    return this.levelData.width;
+  }
+
+  this.getHeight = function() {
+    return this.levelData.height;
+  }
+
+  this.getGroundHeight = function() {
+    return this.levelData.groundHeight;
   }
 }

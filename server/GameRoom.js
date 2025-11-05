@@ -16,9 +16,10 @@ class GameRoom {
     // Game state
     this.level = new ServerLevel();
 
-    // Spawn players at correct ground height
-    const p1X = 200;
-    const p2X = 600;
+    // Spawn players at correct positions in the static arena
+    const levelWidth = this.level.getWidth();
+    const p1X = levelWidth * 0.3;  // 30% from left
+    const p2X = levelWidth * 0.7;  // 70% from left
     const p1Y = this.level.heightAt(p1X);
     const p2Y = this.level.heightAt(p2X);
 

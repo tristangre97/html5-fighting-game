@@ -90,14 +90,18 @@ var animationFrameId = null;
 function resetGameState() {
   level = new Level();
   win.reset();
-  var player_offset = win.width/2 - INITIAL_PLAYER_SEPARATION;
 
   // Use selected characters or defaults
   var p1Char = selectedP1Character || CharacterManager.getCharacterById('fighter1');
   var p2Char = selectedP2Character || CharacterManager.getCharacterById('fighter2');
 
-  player1 = new Player(player_offset, p1Char.sprite, true, p1Char, player1Name);
-  player2 = new Player(win.right() - player_offset, p2Char.sprite, false, p2Char, player2Name);
+  // Spawn players in the static arena
+  var levelWidth = level.getWidth();
+  var p1X = levelWidth * 0.3;  // 30% from left
+  var p2X = levelWidth * 0.7;  // 70% from left
+
+  player1 = new Player(p1X, p1Char.sprite, true, p1Char, player1Name);
+  player2 = new Player(p2X, p2Char.sprite, false, p2Char, player2Name);
   player1.other_player = player2;
   player2.other_player = player1;
   keys = new KeyWatcher();
