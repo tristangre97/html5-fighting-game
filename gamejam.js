@@ -471,7 +471,7 @@ function initializeCharacterSelection() {
   // Create character cards
   characters.forEach(function(char) {
     var $card = $('<div>')
-      .addClass('character-card bg-white/10 backdrop-blur-sm rounded-xl p-4 border-2 border-white/20 cursor-pointer transition-all duration-300 hover:scale-105 hover:border-purple-400 hover:shadow-xl')
+      .addClass('character-card bg-white/10 backdrop-blur-sm rounded-xl p-4 border-2 border-white/20 cursor-pointer transition-all duration-300 hover:scale-105 hover:border-purple-400 hover:shadow-xl relative')
       .attr('data-char-id', char.id)
       .html('<div class="aspect-square bg-white/5 rounded-lg mb-3 flex items-center justify-center overflow-hidden">' +
             '<img src="' + char.sprite + '" alt="' + char.name + '" class="w-full h-full object-cover" onerror="this.style.display=\'none\'">' +
@@ -575,13 +575,38 @@ function updateCharacterSelection() {
   }
 
   // Highlight selected characters in grid
-  $('.character-card').removeClass('border-green-500 border-4').addClass('border-white/20 border-2');
-  if (selectedP1Character) {
-    $('.character-card[data-char-id="' + selectedP1Character.id + '"]').addClass('border-green-500 border-4').removeClass('border-white/20 border-2');
+  // Remove all previous highlights and badges
+  $('.character-card').removeClass('border-green-500 border-blue-500 border-purple-500 border-4').addClass('border-white/20 border-2');
+  $('.character-card').find('.selection-badge').remove();
+
+  var bothSelectedSame = selectedP1Character && selectedP2Character && selectedP1Character.id === selectedP2Character.id;
+
+  if (bothSelectedSame) {
+    // Both players selected the same character - show purple border and "BOTH" badge
+    var $card = $('.character-card[data-char-id="' + selectedP1Character.id + '"]');
+    $card.addClass('border-purple-500 border-4').removeClass('border-white/20 border-2');
+    $card.css('box-shadow', '0 0 20px rgba(168, 85, 247, 0.6)');
+
+    // Add "BOTH" badge
+    $card.prepend('<div class="selection-badge absolute top-2 right-2 bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">P1 + P2</div>');
+  } else {
+    // Different characters selected
+    if (selectedP1Character) {
+      var $p1Card = $('.character-card[data-char-id="' + selectedP1Character.id + '"]');
+      $p1Card.addClass('border-green-500 border-4').removeClass('border-white/20 border-2');
+      $p1Card.css('box-shadow', '0 0 15px rgba(34, 197, 94, 0.5)');
+      $p1Card.prepend('<div class="selection-badge absolute top-2 right-2 bg-green-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">P1</div>');
+    }
+    if (selectedP2Character) {
+      var $p2Card = $('.character-card[data-char-id="' + selectedP2Character.id + '"]');
+      $p2Card.addClass('border-blue-500 border-4').removeClass('border-white/20 border-2');
+      $p2Card.css('box-shadow', '0 0 15px rgba(59, 130, 246, 0.5)');
+      $p2Card.prepend('<div class="selection-badge absolute top-2 right-2 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">P2</div>');
+    }
   }
-  if (selectedP2Character && selectedP2Character.id !== (selectedP1Character && selectedP1Character.id)) {
-    $('.character-card[data-char-id="' + selectedP2Character.id + '"]').addClass('border-blue-500 border-4').removeClass('border-white/20 border-2');
-  }
+
+  // Reset box-shadow for unselected cards
+  $('.character-card').not('.border-green-500, .border-blue-500, .border-purple-500').css('box-shadow', '');
 
   // Enable/disable start button
   var canStart = pendingGameMode === 'online' ? selectedP1Character : (selectedP1Character && selectedP2Character);
