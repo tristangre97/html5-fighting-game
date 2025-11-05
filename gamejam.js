@@ -473,6 +473,18 @@ $(document).ready(function() {
   touchControls = new TouchControlsManager();
   touchControls.init();
 
+  // Handle window resize
+  var resizeTimeout;
+  $(window).resize(function() {
+    // Debounce resize events
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(function() {
+      if (win) {
+        win.resize();
+      }
+    }, 100);
+  });
+
   // Set up FPS selection
   $('#fps-select').change(function() {
     TARGET_FPS = parseInt($(this).val());
