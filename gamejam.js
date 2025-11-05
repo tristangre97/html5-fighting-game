@@ -66,6 +66,12 @@ var network = null;
 var myPlayerNumber = null;
 var lastInputState = {};
 
+// Controller and touch support
+var gamepadManager = null;
+var touchControls = null;
+var player1JumpPressed = false;
+var player2JumpPressed = false;
+
 function resetGameState() {
   level = new Level();
   win.reset();
@@ -94,49 +100,102 @@ function handleInput() {
 }
 
 function handleLocalInput() {
-  if (keys.isPressed(KEY_R)) {
+  // Get gamepad input
+  var gamepad1Input = null;
+  var gamepad2Input = null;
+
+  if (gamepadManager) {
+    gamepadManager.update();
+    if (gamepadManager.hasGamepad(1)) {
+      gamepad1Input = gamepadManager.getInput(1);
+    }
+    if (gamepadManager.hasGamepad(2)) {
+      gamepad2Input = gamepadManager.getInput(2);
+    }
+  }
+
+  // Player 1 input (keyboard or gamepad 1)
+  var p1Left = keys.isPressed(KEY_A) || (gamepad1Input && gamepad1Input.left);
+  var p1Right = keys.isPressed(KEY_D) || (gamepad1Input && gamepad1Input.right);
+  var p1Punch = keys.isPressed(KEY_R) || (gamepad1Input && gamepad1Input.punch);
+  var p1Throw = keys.isPressed(KEY_T) || (gamepad1Input && gamepad1Input.throw);
+
+  if (p1Punch) {
     player1.punch();
   }
-  if (keys.isPressed(KEY_T)) {
+  if (p1Throw) {
     player1.throw_em();
   }
   player1.block(false);
-  if (keys.isPressed(KEY_A)) {
+  if (p1Left) {
     player1.moveLeft();
     player1.block(player1.facing_right);
   }
-  if (keys.isPressed(KEY_D)) {
+  if (p1Right) {
     player1.moveRight();
     player1.block(!player1.facing_right);
   }
 
-  if (keys.isPressed(KEY_COMMA)) {
+  // Player 2 input (keyboard or gamepad 2)
+  var p2Left = keys.isPressed(KEY_LEFT) || (gamepad2Input && gamepad2Input.left);
+  var p2Right = keys.isPressed(KEY_RIGHT) || (gamepad2Input && gamepad2Input.right);
+  var p2Punch = keys.isPressed(KEY_COMMA) || (gamepad2Input && gamepad2Input.punch);
+  var p2Throw = keys.isPressed(KEY_PERIOD) || (gamepad2Input && gamepad2Input.throw);
+
+  if (p2Punch) {
     player2.punch();
   }
-  if (keys.isPressed(KEY_PERIOD)) {
+  if (p2Throw) {
     player2.throw_em();
   }
   player2.block(false);
-  if (keys.isPressed(KEY_LEFT)) {
+  if (p2Left) {
     player2.moveLeft();
     player2.block(player2.facing_right);
   }
-  if (keys.isPressed(KEY_RIGHT)) {
+  if (p2Right) {
     player2.moveRight();
     player2.block(!player2.facing_right);
   }
 }
 
 function handleOnlineInput() {
-  // Collect input state
+  // Get gamepad input
+  var gamepadInput = null;
+  if (gamepadManager) {
+    gamepadManager.update();
+    if (gamepadManager.hasGamepad(1)) {
+      gamepadInput = gamepadManager.getInput(1);
+    }
+  }
+
+  // Get touch input
+  var touchInput = null;
+  if (touchControls && touchControls.isActive()) {
+    touchInput = touchControls.getInput();
+  }
+
+  // Collect input state from keyboard, gamepad, or touch
   var inputState = {
-    left: keys.isPressed(KEY_A) || keys.isPressed(KEY_LEFT),
-    right: keys.isPressed(KEY_D) || keys.isPressed(KEY_RIGHT),
-    jump: keys.isPressed(KEY_W) || keys.isPressed(KEY_UP),
-    punch: keys.isPressed(KEY_R) || keys.isPressed(KEY_COMMA),
-    throw: keys.isPressed(KEY_T) || keys.isPressed(KEY_PERIOD),
+    left: keys.isPressed(KEY_A) || keys.isPressed(KEY_LEFT) ||
+          (gamepadInput && gamepadInput.left) ||
+          (touchInput && touchInput.left),
+    right: keys.isPressed(KEY_D) || keys.isPressed(KEY_RIGHT) ||
+           (gamepadInput && gamepadInput.right) ||
+           (touchInput && touchInput.right),
+    jump: keys.isPressed(KEY_W) || keys.isPressed(KEY_UP) ||
+          (gamepadInput && gamepadInput.jump) ||
+          (touchInput && touchInput.jump),
+    punch: keys.isPressed(KEY_R) || keys.isPressed(KEY_COMMA) ||
+           (gamepadInput && gamepadInput.punch) ||
+           (touchInput && touchInput.punch),
+    throw: keys.isPressed(KEY_T) || keys.isPressed(KEY_PERIOD) ||
+           (gamepadInput && gamepadInput.throw) ||
+           (touchInput && touchInput.throw),
     block: keys.isPressed(KEY_A) || keys.isPressed(KEY_D) ||
-           keys.isPressed(KEY_LEFT) || keys.isPressed(KEY_RIGHT)
+           keys.isPressed(KEY_LEFT) || keys.isPressed(KEY_RIGHT) ||
+           (gamepadInput && gamepadInput.block) ||
+           (touchInput && touchInput.block)
   };
 
   // Only send input if it changed
@@ -165,6 +224,26 @@ function update() {
 
   if (game_state == STATE_PLAYING) {
     if (gameMode === 'local') {
+      // Handle gamepad jump input (must be done here to prevent hold-down)
+      if (gamepadManager) {
+        var gamepad1Input = gamepadManager.getInput(1);
+        var gamepad2Input = gamepadManager.getInput(2);
+
+        if (gamepad1Input && gamepad1Input.justJumped && !player1JumpPressed) {
+          if (player1) player1.jump();
+          player1JumpPressed = true;
+        } else if (!gamepad1Input || !gamepad1Input.jump) {
+          player1JumpPressed = false;
+        }
+
+        if (gamepad2Input && gamepad2Input.justJumped && !player2JumpPressed) {
+          if (player2) player2.jump();
+          player2JumpPressed = true;
+        } else if (!gamepad2Input || !gamepad2Input.jump) {
+          player2JumpPressed = false;
+        }
+      }
+
       handleInput();
       player1.update(dt);
       player2.update(dt);
@@ -204,6 +283,11 @@ function startOnlineMode() {
 
   $('#menu').hide();
   $('#status').text('Connecting to server...').show();
+
+  // Show touch controls on mobile
+  if (touchControls && touchControls.isMobile) {
+    touchControls.show();
+  }
 
   network.connect().then(() => {
     $('#status').text('Finding opponent...');
@@ -314,6 +398,12 @@ function startOnlineMode() {
 function startLocalMode() {
   gameMode = 'local';
   $('#menu').hide();
+
+  // Show touch controls on mobile
+  if (touchControls && touchControls.isMobile) {
+    touchControls.show();
+  }
+
   resetGameState();
 }
 
@@ -338,6 +428,11 @@ function KeyWatcher() {
 $(document).ready(function() {
   win = new Window(800, 600);
   keys = new KeyWatcher();
+
+  // Initialize gamepad and touch controls
+  gamepadManager = new GamepadManager();
+  touchControls = new TouchControlsManager();
+  touchControls.init();
 
   // Set up mode selection buttons
   $('#local-btn').click(function() {

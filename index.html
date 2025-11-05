@@ -18,6 +18,8 @@ limitations under the License.
 
 <html>
 <head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>HTML5 Fighting Game - Multiplayer</title>
 <link rel='stylesheet' type='text/css' href='style.css' />
 
@@ -29,6 +31,8 @@ limitations under the License.
 <script src='sprite.js'></script>
 <script src='player.js'></script>
 <script src='network.js'></script>
+<script src='gamepad.js'></script>
+<script src='touchcontrols.js'></script>
 <script src='gamejam.js'></script>
 
 <style>
@@ -97,6 +101,201 @@ limitations under the License.
     border-radius: 5px;
     font-size: 14px;
   }
+
+  /* Mobile Touch Controls */
+  #touch-controls {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    z-index: 500;
+    display: none;
+  }
+
+  #joystick-area {
+    position: absolute;
+    left: 30px;
+    bottom: 80px;
+    width: 150px;
+    height: 150px;
+    pointer-events: all;
+  }
+
+  #joystick-base {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 120px;
+    height: 120px;
+    background: rgba(255, 255, 255, 0.2);
+    border: 3px solid rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+  }
+
+  #joystick-stick {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 50px;
+    height: 50px;
+    background: rgba(255, 255, 255, 0.6);
+    border: 3px solid rgba(255, 255, 255, 0.8);
+    border-radius: 50%;
+    transition: transform 0.05s;
+  }
+
+  .touch-button {
+    position: absolute;
+    width: 70px;
+    height: 70px;
+    background: rgba(255, 255, 255, 0.3);
+    border: 3px solid rgba(255, 255, 255, 0.6);
+    border-radius: 50%;
+    pointer-events: all;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: bold;
+    color: white;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    transition: all 0.1s;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .touch-button.active {
+    background: rgba(255, 255, 255, 0.6);
+    transform: scale(0.95);
+  }
+
+  #btn-jump {
+    right: 30px;
+    bottom: 180px;
+    background: rgba(76, 175, 80, 0.4);
+    border-color: rgba(76, 175, 80, 0.8);
+  }
+
+  #btn-jump.active {
+    background: rgba(76, 175, 80, 0.7);
+  }
+
+  #btn-punch {
+    right: 130px;
+    bottom: 100px;
+    background: rgba(244, 67, 54, 0.4);
+    border-color: rgba(244, 67, 54, 0.8);
+  }
+
+  #btn-punch.active {
+    background: rgba(244, 67, 54, 0.7);
+  }
+
+  #btn-throw {
+    right: 30px;
+    bottom: 80px;
+    background: rgba(255, 152, 0, 0.4);
+    border-color: rgba(255, 152, 0, 0.8);
+  }
+
+  #btn-throw.active {
+    background: rgba(255, 152, 0, 0.7);
+  }
+
+  #btn-block {
+    right: 130px;
+    bottom: 180px;
+    background: rgba(33, 150, 243, 0.4);
+    border-color: rgba(33, 150, 243, 0.8);
+  }
+
+  #btn-block.active {
+    background: rgba(33, 150, 243, 0.7);
+  }
+
+  /* Mobile responsive */
+  @media (max-width: 768px) {
+    #menu {
+      width: 90%;
+      max-width: 400px;
+      padding: 20px;
+    }
+
+    #menu h1 {
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+
+    #menu button {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+    }
+
+    .instructions {
+      font-size: 12px;
+      padding: 15px;
+    }
+
+    .section {
+      display: none;
+    }
+
+    #canvas {
+      max-width: 100%;
+      height: auto;
+    }
+  }
+
+  /* Landscape mobile orientation */
+  @media (max-width: 896px) and (orientation: landscape) {
+    #joystick-area {
+      left: 20px;
+      bottom: 40px;
+      width: 120px;
+      height: 120px;
+    }
+
+    #joystick-base {
+      width: 100px;
+      height: 100px;
+    }
+
+    #joystick-stick {
+      width: 40px;
+      height: 40px;
+    }
+
+    .touch-button {
+      width: 60px;
+      height: 60px;
+      font-size: 12px;
+    }
+
+    #btn-jump {
+      right: 20px;
+      bottom: 120px;
+    }
+
+    #btn-punch {
+      right: 100px;
+      bottom: 60px;
+    }
+
+    #btn-throw {
+      right: 20px;
+      bottom: 50px;
+    }
+
+    #btn-block {
+      right: 100px;
+      bottom: 120px;
+    }
+  }
 </style>
 </head>
 
@@ -140,6 +339,19 @@ limitations under the License.
     <b>&gt;</b> Throw<br>
 </div>
 <div id='debug' class='section'></div>
+
+<!-- Touch Controls for Mobile -->
+<div id='touch-controls'>
+  <div id='joystick-area'>
+    <div id='joystick-base'></div>
+    <div id='joystick-stick'></div>
+  </div>
+  <div id='btn-jump' class='touch-button'>JUMP</div>
+  <div id='btn-punch' class='touch-button'>PUNCH</div>
+  <div id='btn-throw' class='touch-button'>THROW</div>
+  <div id='btn-block' class='touch-button'>BLOCK</div>
+</div>
+
 </body>
 </html>
 
