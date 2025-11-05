@@ -29,11 +29,13 @@ var KEY_D=68;
 var KEY_X=88;
 var KEY_R=82;
 var KEY_ESC=27;
+var KEY_E=69;
 var KEY_O=79;
 var KEY_T=84;
 var KEY_P=80;
 var KEY_COMMA=188;
 var KEY_PERIOD=190;
+var KEY_SLASH=191;
 var KEY_LEFT=37;
 var KEY_RIGHT=39;
 var KEY_UP=38;
@@ -56,6 +58,7 @@ var player2;
 var interval;
 var level;
 var lastTimeStamp = 0;
+var game_state;
 
 var JUMP_TIME_MS = 800;  // jump time in milliseconds
 var JUMP_HEIGHT = 100;  // in pixels
@@ -65,6 +68,15 @@ var gameMode = 'local'; // 'local' or 'online'
 var network = null;
 var myPlayerNumber = null;
 var lastInputState = {};
+
+// Character selection
+var selectedP1Character = null;
+var selectedP2Character = null;
+var pendingGameMode = null;
+
+// Player names
+var player1Name = 'Player 1';
+var player2Name = 'Player 2';
 
 // Controller and touch support
 var gamepadManager = null;
@@ -80,9 +92,18 @@ var animationFrameId = null;
 function resetGameState() {
   level = new Level();
   win.reset();
-  var player_offset = win.width/2 - INITIAL_PLAYER_SEPARATION;
-  player1 = new Player(player_offset, 'character.png', true);
-  player2 = new Player(win.right() - player_offset, 'character_2.png', false);
+
+  // Use selected characters or defaults
+  var p1Char = selectedP1Character || CharacterManager.getCharacterById('fighter1');
+  var p2Char = selectedP2Character || CharacterManager.getCharacterById('fighter2');
+
+  // Spawn players in the static arena
+  var levelWidth = level.getWidth();
+  var p1X = levelWidth * 0.3;  // 30% from left
+  var p2X = levelWidth * 0.7;  // 70% from left
+
+  player1 = new Player(p1X, p1Char.sprite, true, p1Char, player1Name);
+  player2 = new Player(p2X, p2Char.sprite, false, p2Char, player2Name);
   player1.other_player = player2;
   player2.other_player = player1;
   keys = new KeyWatcher();
@@ -96,15 +117,18 @@ function startRound() {
   win.startGame();
 }
 
-function handleInput() {
+function handleInput(dt) {
   if (gameMode === 'local') {
-    handleLocalInput();
+    handleLocalInput(dt);
   } else if (gameMode === 'online') {
     handleOnlineInput();
   }
 }
 
-function handleLocalInput() {
+function handleLocalInput(dt) {
+  // Normalize dt to 60 FPS baseline for frame-rate independent input
+  var dtScale = dt / 16.67;
+
   // Get gamepad input
   var gamepad1Input = null;
   var gamepad2Input = null;
@@ -124,6 +148,7 @@ function handleLocalInput() {
   var p1Right = keys.isPressed(KEY_D) || (gamepad1Input && gamepad1Input.right);
   var p1Punch = keys.isPressed(KEY_R) || (gamepad1Input && gamepad1Input.punch);
   var p1Throw = keys.isPressed(KEY_T) || (gamepad1Input && gamepad1Input.throw);
+  var p1Projectile = keys.isPressed(KEY_E) || (gamepad1Input && gamepad1Input.projectile);
 
   if (p1Punch) {
     player1.punch();
@@ -131,13 +156,16 @@ function handleLocalInput() {
   if (p1Throw) {
     player1.throw_em();
   }
+  if (p1Projectile) {
+    player1.fireProjectile(Date.now());
+  }
   player1.block(false);
   if (p1Left) {
-    player1.moveLeft();
+    player1.moveLeft(dtScale);
     player1.block(player1.facing_right);
   }
   if (p1Right) {
-    player1.moveRight();
+    player1.moveRight(dtScale);
     player1.block(!player1.facing_right);
   }
 
@@ -146,6 +174,7 @@ function handleLocalInput() {
   var p2Right = keys.isPressed(KEY_RIGHT) || (gamepad2Input && gamepad2Input.right);
   var p2Punch = keys.isPressed(KEY_COMMA) || (gamepad2Input && gamepad2Input.punch);
   var p2Throw = keys.isPressed(KEY_PERIOD) || (gamepad2Input && gamepad2Input.throw);
+  var p2Projectile = keys.isPressed(KEY_SLASH) || (gamepad2Input && gamepad2Input.projectile);
 
   if (p2Punch) {
     player2.punch();
@@ -153,13 +182,16 @@ function handleLocalInput() {
   if (p2Throw) {
     player2.throw_em();
   }
+  if (p2Projectile) {
+    player2.fireProjectile(Date.now());
+  }
   player2.block(false);
   if (p2Left) {
-    player2.moveLeft();
+    player2.moveLeft(dtScale);
     player2.block(player2.facing_right);
   }
   if (p2Right) {
-    player2.moveRight();
+    player2.moveRight(dtScale);
     player2.block(!player2.facing_right);
   }
 }
@@ -197,6 +229,9 @@ function handleOnlineInput() {
     throw: keys.isPressed(KEY_T) || keys.isPressed(KEY_PERIOD) ||
            (gamepadInput && gamepadInput.throw) ||
            (touchInput && touchInput.throw),
+    projectile: keys.isPressed(KEY_E) || keys.isPressed(KEY_SLASH) ||
+                (gamepadInput && gamepadInput.projectile) ||
+                (touchInput && touchInput.projectile),
     block: keys.isPressed(KEY_A) || keys.isPressed(KEY_D) ||
            keys.isPressed(KEY_LEFT) || keys.isPressed(KEY_RIGHT) ||
            (gamepadInput && gamepadInput.block) ||
@@ -260,7 +295,7 @@ function update(timestamp) {
         }
       }
 
-      handleInput();
+      handleInput(dt);
       player1.update(dt);
       player2.update(dt);
 
@@ -283,7 +318,7 @@ function update(timestamp) {
     } else if (gameMode === 'online') {
       // In online mode, just send input and render
       // Server handles all game logic
-      handleInput();
+      handleInput(dt);
       updateHealthBars();
     }
   }
@@ -327,7 +362,9 @@ function startOnlineMode() {
 
   network.connect().then(() => {
     $('#status-text').text('Finding opponent...');
-    network.findMatch();
+    // Send selected character or default
+    var myCharacter = selectedP1Character || CharacterManager.getCharacterById('fighter1');
+    network.findMatch(myCharacter);
   }).catch((error) => {
     $('#status-text').text('Connection failed: ' + error.message);
     setTimeout(() => {
@@ -357,12 +394,22 @@ function startOnlineMode() {
 
     win.reset();
 
-    // Create players based on server initial state
-    var char1 = myPlayerNumber === 1 ? 'character.png' : 'character_2.png';
-    var char2 = myPlayerNumber === 1 ? 'character_2.png' : 'character.png';
+    // Use selected characters or defaults
+    var p1Char = selectedP1Character || CharacterManager.getCharacterById('fighter1');
+    var p2Char = selectedP2Character || CharacterManager.getCharacterById('fighter2');
 
-    player1 = new Player(initialState.player1.x, char1, true);
-    player2 = new Player(initialState.player2.x, char2, false);
+    // Create players based on server initial state and selected characters
+    var char1Sprite = myPlayerNumber === 1 ? p1Char.sprite : p2Char.sprite;
+    var char2Sprite = myPlayerNumber === 1 ? p2Char.sprite : p1Char.sprite;
+    var char1Data = myPlayerNumber === 1 ? p1Char : p2Char;
+    var char2Data = myPlayerNumber === 1 ? p2Char : p1Char;
+
+    // For online mode, use player names (opponent gets default name for now)
+    var p1Name = myPlayerNumber === 1 ? player1Name : 'Opponent';
+    var p2Name = myPlayerNumber === 2 ? player1Name : 'Opponent';
+
+    player1 = new Player(initialState.player1.x, char1Sprite, true, char1Data, p1Name);
+    player2 = new Player(initialState.player2.x, char2Sprite, false, char2Data, p2Name);
 
     player1.y = initialState.player1.y;
     player2.y = initialState.player2.y;
@@ -446,6 +493,169 @@ function startLocalMode() {
   resetGameState();
 }
 
+// Character Selection Functions
+function initializeCharacterSelection() {
+  var $grid = $('#character-grid');
+  var characters = CharacterManager.getCharacters();
+
+  // Clear existing grid
+  $grid.empty();
+
+  // Create character cards
+  characters.forEach(function(char) {
+    var $card = $('<div>')
+      .addClass('character-card bg-white/10 backdrop-blur-sm rounded-xl p-4 border-2 border-white/20 cursor-pointer transition-all duration-300 hover:scale-105 hover:border-purple-400 hover:shadow-xl relative')
+      .attr('data-char-id', char.id)
+      .html('<div class="aspect-square bg-white/5 rounded-lg mb-3 flex items-center justify-center overflow-hidden">' +
+            '<img src="' + char.sprite + '" alt="' + char.name + '" class="w-full h-full object-cover" onerror="this.style.display=\'none\'">' +
+            '</div>' +
+            '<div class="text-white font-bold text-sm text-center pixel-font">' + char.name + '</div>' +
+            '<div class="text-white/60 text-xs text-center mt-1">' + (char.description || '') + '</div>');
+
+    $card.click(function() {
+      selectCharacter(char);
+    });
+
+    $grid.append($card);
+  });
+
+  // Set up character selection UI buttons
+  $('#char-back-btn').click(function() {
+    hideCharacterSelection();
+  });
+
+  $('#char-start-btn').click(function() {
+    if (selectedP1Character && (selectedP2Character || pendingGameMode === 'online')) {
+      startGameWithCharacters();
+    }
+  });
+}
+
+function showCharacterSelection(modeText) {
+  $('#char-select-mode-text').text(modeText);
+  $('#menu').hide();
+  $('#character-select').removeClass('hidden').addClass('animate-fadeIn');
+
+  // Reset selections for new session
+  selectedP1Character = null;
+  selectedP2Character = null;
+  nextPlayerToSelect = 1;
+  updateCharacterSelection();
+}
+
+function hideCharacterSelection() {
+  $('#character-select').addClass('hidden');
+  $('#menu').show();
+  selectedP1Character = null;
+  selectedP2Character = null;
+  pendingGameMode = null;
+}
+
+var nextPlayerToSelect = 1; // Toggle between 1 and 2
+
+function selectCharacter(character) {
+  // For local mode: alternate between P1 and P2
+  // For online mode: only select for local player
+  if (pendingGameMode === 'local') {
+    if (!selectedP1Character) {
+      selectedP1Character = character;
+      nextPlayerToSelect = 2;
+    } else if (!selectedP2Character) {
+      selectedP2Character = character;
+      nextPlayerToSelect = 1;
+    } else {
+      // Both selected, allow changing
+      if (nextPlayerToSelect === 1) {
+        selectedP1Character = character;
+        nextPlayerToSelect = 2;
+      } else {
+        selectedP2Character = character;
+        nextPlayerToSelect = 1;
+      }
+    }
+  } else {
+    // Online mode - only select for player 1 for now
+    selectedP1Character = character;
+    selectedP2Character = character; // Default P2 to same for now
+  }
+
+  updateCharacterSelection();
+}
+
+function updateCharacterSelection() {
+  // Update P1 display
+  if (selectedP1Character) {
+    $('#p1-selection').text(selectedP1Character.name);
+    $('#p1-hp').text(selectedP1Character.stats.health);
+    $('#p1-dmg').text(selectedP1Character.stats.punchDamage);
+    $('#p1-spd').text(Math.round(selectedP1Character.stats.maxSpeed * 100));
+    $('#p1-stats').removeClass('hidden');
+  } else {
+    $('#p1-selection').text('- Not Selected -');
+    $('#p1-stats').addClass('hidden');
+  }
+
+  // Update P2 display
+  if (selectedP2Character) {
+    $('#p2-selection').text(selectedP2Character.name);
+    $('#p2-hp').text(selectedP2Character.stats.health);
+    $('#p2-dmg').text(selectedP2Character.stats.punchDamage);
+    $('#p2-spd').text(Math.round(selectedP2Character.stats.maxSpeed * 100));
+    $('#p2-stats').removeClass('hidden');
+  } else {
+    $('#p2-selection').text('- Not Selected -');
+    $('#p2-stats').addClass('hidden');
+  }
+
+  // Highlight selected characters in grid
+  // Remove all previous highlights and badges
+  $('.character-card').removeClass('border-green-500 border-blue-500 border-purple-500 border-4').addClass('border-white/20 border-2');
+  $('.character-card').find('.selection-badge').remove();
+
+  var bothSelectedSame = selectedP1Character && selectedP2Character && selectedP1Character.id === selectedP2Character.id;
+
+  if (bothSelectedSame) {
+    // Both players selected the same character - show purple border and "BOTH" badge
+    var $card = $('.character-card[data-char-id="' + selectedP1Character.id + '"]');
+    $card.addClass('border-purple-500 border-4').removeClass('border-white/20 border-2');
+    $card.css('box-shadow', '0 0 20px rgba(168, 85, 247, 0.6)');
+
+    // Add "BOTH" badge
+    $card.prepend('<div class="selection-badge absolute top-2 right-2 bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">P1 + P2</div>');
+  } else {
+    // Different characters selected
+    if (selectedP1Character) {
+      var $p1Card = $('.character-card[data-char-id="' + selectedP1Character.id + '"]');
+      $p1Card.addClass('border-green-500 border-4').removeClass('border-white/20 border-2');
+      $p1Card.css('box-shadow', '0 0 15px rgba(34, 197, 94, 0.5)');
+      $p1Card.prepend('<div class="selection-badge absolute top-2 right-2 bg-green-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">P1</div>');
+    }
+    if (selectedP2Character) {
+      var $p2Card = $('.character-card[data-char-id="' + selectedP2Character.id + '"]');
+      $p2Card.addClass('border-blue-500 border-4').removeClass('border-white/20 border-2');
+      $p2Card.css('box-shadow', '0 0 15px rgba(59, 130, 246, 0.5)');
+      $p2Card.prepend('<div class="selection-badge absolute top-2 right-2 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">P2</div>');
+    }
+  }
+
+  // Reset box-shadow for unselected cards
+  $('.character-card').not('.border-green-500, .border-blue-500, .border-purple-500').css('box-shadow', '');
+
+  // Enable/disable start button
+  var canStart = pendingGameMode === 'online' ? selectedP1Character : (selectedP1Character && selectedP2Character);
+  $('#char-start-btn').prop('disabled', !canStart);
+}
+
+function startGameWithCharacters() {
+  $('#character-select').addClass('hidden');
+
+  if (pendingGameMode === 'local') {
+    startLocalMode();
+  } else if (pendingGameMode === 'online') {
+    startOnlineMode();
+  }
+}
+
 function KeyWatcher() {
   this.keys = {}
   this.lastKey = undefined;
@@ -492,13 +702,36 @@ $(document).ready(function() {
     console.log('FPS changed to:', TARGET_FPS);
   });
 
+  // Set up player name inputs
+  $('#p1-name-input').on('input', function() {
+    var name = $(this).val().trim();
+    player1Name = name || 'Player 1';
+  });
+
+  $('#p2-name-input').on('input', function() {
+    var name = $(this).val().trim();
+    player2Name = name || 'Player 2';
+  });
+
+  // Initialize player names from inputs
+  player1Name = $('#p1-name-input').val().trim() || 'Player 1';
+  player2Name = $('#p2-name-input').val().trim() || 'Player 2';
+
+  // Load characters first
+  CharacterManager.load(function(characters) {
+    console.log('Loaded', characters.length, 'characters');
+    initializeCharacterSelection();
+  });
+
   // Set up mode selection buttons
   $('#local-btn').click(function() {
-    startLocalMode();
+    pendingGameMode = 'local';
+    showCharacterSelection('Local 2-Player');
   });
 
   $('#online-btn').click(function() {
-    startOnlineMode();
+    pendingGameMode = 'online';
+    showCharacterSelection('Online Multiplayer');
   });
 
   $(document).keydown(function(event) {

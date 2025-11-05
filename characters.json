@@ -1,0 +1,45 @@
+{
+  "characters": [
+    {
+      "id": "fighter1",
+      "name": "Red Brawler",
+      "sprite": "character.png",
+      "stats": {
+        "health": 120,
+        "maxSpeed": 0.3,
+        "acceleration": 0.05,
+        "jumpVelocity": 0.4,
+        "punchDamage": 6,
+        "punchRange": 70,
+        "throwDamage": 8,
+        "throwRange": 70
+      },
+      "description": "Melee specialist with no projectiles"
+    },
+    {
+      "id": "fighter2",
+      "name": "Blue Mage",
+      "sprite": "character_2.png",
+      "stats": {
+        "health": 90,
+        "maxSpeed": 0.3,
+        "acceleration": 0.05,
+        "jumpVelocity": 0.4,
+        "punchDamage": 4,
+        "punchRange": 70,
+        "throwDamage": 6,
+        "throwRange": 70
+      },
+      "projectile": {
+        "damage": 8,
+        "speed": 0.6,
+        "width": 20,
+        "height": 20,
+        "color": "#4A90E2",
+        "lifetime": 2500,
+        "cooldown": 800
+      },
+      "description": "Ranged fighter with magic projectiles"
+    }
+  ]
+}

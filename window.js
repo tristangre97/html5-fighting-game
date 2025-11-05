@@ -24,9 +24,9 @@ function Window(width, height) {
   this.width = width;
   this.height = height;
 
-  this.scroll_speed = .1;
-  this.should_scroll = true;
-  this.scroll_location = 0;
+  // Camera for static arena (no scrolling)
+  this.cameraX = 0;
+  this.cameraY = 0;
 
   this.canvas = $('#canvas').get(0);
   this.context = null;
@@ -78,14 +78,12 @@ Window.prototype.resize = function() {
 };
 
 Window.prototype.gameOver = function() {
-  this.should_scroll = false;
   $('#game_over').show();
 };
 
-
 Window.prototype.reset = function() {
-  this.should_scroll = false;
-  this.scroll_location = 0;
+  this.cameraX = 0;
+  this.cameraY = 0;
   $('#game_over').hide();
   $('#fight').show();
   // Ensure canvas is properly sized after reset
@@ -93,7 +91,6 @@ Window.prototype.reset = function() {
 };
 
 Window.prototype.startGame = function() {
-  this.should_scroll = true;
   $('#fight').hide();
 }
 
@@ -106,34 +103,51 @@ Window.prototype.top = function() {
 };
 
 Window.prototype.right = function() {
-  return this.scroll_location + this.width;
+  return level ? level.getWidth() : this.width;
 };
 
 Window.prototype.update = function(dt) {
-  if (this.should_scroll) {
-    this.scroll_location += dt * this.scroll_speed;
+  // Update camera to follow players (centered between them)
+  if (player1 && player2 && level) {
+    var midX = (player1.x + player2.x) / 2;
+    var levelWidth = level.getWidth();
+
+    // Center camera on midpoint, but keep within bounds
+    this.cameraX = midX - this.width / 2;
+    this.cameraX = Math.max(0, Math.min(this.cameraX, levelWidth - this.width));
   }
-  
-  // Don't let the players past the left edge of the screen
-  var min_player_x = this.scroll_location + SPRITE_HALF_WIDTH;
-  if (player1.x < min_player_x) {
-    player1.x = min_player_x;
-  }
-  if (player2.x < min_player_x) {
-    player2.x = min_player_x;
+
+  // Keep players within level bounds
+  if (level) {
+    var levelWidth = level.getWidth();
+    if (player1.x < SPRITE_HALF_WIDTH) {
+      player1.x = SPRITE_HALF_WIDTH;
+    }
+    if (player1.x > levelWidth - SPRITE_HALF_WIDTH) {
+      player1.x = levelWidth - SPRITE_HALF_WIDTH;
+    }
+    if (player2.x < SPRITE_HALF_WIDTH) {
+      player2.x = SPRITE_HALF_WIDTH;
+    }
+    if (player2.x > levelWidth - SPRITE_HALF_WIDTH) {
+      player2.x = levelWidth - SPRITE_HALF_WIDTH;
+    }
   }
 }
 
 Window.prototype.drawPlayer = function(player) {
-  var x = player.x - this.scroll_location;
+  var x = player.x - this.cameraX;
   var y = player.y;
   player.sprite.drawAt(this.context, x, player.y, !player.facing_right);
+
+  // Draw player name above head
+  this.drawPlayerName(player, x, y);
 
   if (DEBUG) {
     // Draw dot at foot location
     this.context.fillStyle = 'white';
     this.context.fillRect(x-3, player.y-3, 6, 6);
-   
+
     // Hit box
     this.context.strokeStyle = 'white';
     this.context.fillStyle = 'rgba(255, 255, 0, .5)';
@@ -148,21 +162,82 @@ Window.prototype.drawPlayer = function(player) {
   };
 }
 
+Window.prototype.drawPlayerName = function(player, x, y) {
+  if (!player.name) return;
+
+  // Save current context state
+  this.context.save();
+
+  // Reset transformation for text (so it's not flipped)
+  this.context.setTransform(1, 0, 0, 1, 0, 0);
+
+  // Calculate position above player's head
+  // Account for the flipped y-axis and vertical offset
+  var nameX = x;
+  var nameY = this.canvas.height - (y + 120 - ORIGIN_VERTICAL_OFFSET);
+
+  // Set text properties
+  this.context.font = 'bold 14px Arial';
+  this.context.textAlign = 'center';
+  this.context.textBaseline = 'bottom';
+
+  // Measure text for background
+  var textWidth = this.context.measureText(player.name).width;
+  var padding = 6;
+  var bgWidth = textWidth + padding * 2;
+  var bgHeight = 20;
+
+  // Draw background with semi-transparent black
+  this.context.fillStyle = 'rgba(0, 0, 0, 0.6)';
+  this.context.fillRect(nameX - bgWidth/2, nameY - bgHeight, bgWidth, bgHeight);
+
+  // Draw border
+  this.context.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+  this.context.lineWidth = 2;
+  this.context.strokeRect(nameX - bgWidth/2, nameY - bgHeight, bgWidth, bgHeight);
+
+  // Draw text with white color
+  this.context.fillStyle = '#FFFFFF';
+  this.context.fillText(player.name, nameX, nameY - 3);
+
+  // Restore context state
+  this.context.restore();
+}
+
 Window.prototype.draw = function() {
-  // Sky
-  for (var i=0; i <= this.width; i += 200) {
-    this.context.drawImage(this.sky_, 0, 0, 200, 600, 
-        i - (this.scroll_location % 200), -ORIGIN_VERTICAL_OFFSET, 200, 600);
+  // Save context and apply camera transform
+  this.context.save();
+  this.context.translate(-this.cameraX, 0);
+
+  // Sky (repeating background)
+  for (var i = Math.floor(this.cameraX / 200) * 200; i <= this.cameraX + this.width; i += 200) {
+    this.context.drawImage(this.sky_, 0, 0, 200, 600,
+      i, -ORIGIN_VERTICAL_OFFSET, 200, 600);
   }
-  
-  // Ground
-  level.drawLevel(this.context, parseInt(this.scroll_location), this.width);
+
+  // Draw static level with platforms
+  level.drawLevel(this.context);
 
   // Sprites
   this.drawPlayer(player1);
   this.drawPlayer(player2);
 
-  // HUD
+  // Draw projectiles
+  if (player1 && player1.projectiles) {
+    for (var i = 0; i < player1.projectiles.length; i++) {
+      player1.projectiles[i].draw(this.context, this.cameraX);
+    }
+  }
+  if (player2 && player2.projectiles) {
+    for (var i = 0; i < player2.projectiles.length; i++) {
+      player2.projectiles[i].draw(this.context, this.cameraX);
+    }
+  }
+
+  // Restore context (remove camera transform for HUD)
+  this.context.restore();
+
+  // HUD (drawn in screen space, not world space)
   this.drawHealth(10, this.top() - 20, player1);
   this.drawHealth(this.width - 110, this.top() - 20, player2);
 }

@@ -14,35 +14,47 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-function Player(x, sprite_sheet, facing_right) {
+function Player(x, sprite_sheet, facing_right, characterData, playerName) {
   this.x = x;
   this.dx = 0;
   this.y = level.getHeightAtPoint(x);
   this.dy = 0;
-  this.health = 100;
+
+  // Apply character stats or use defaults
+  var stats = (characterData && characterData.stats) ? characterData.stats : {};
+  this.health = stats.health || 100;
+  this.maxHealth = stats.health || 100;
   this.sprite = new AnimatingSprite(sprite_sheet);
+  this.characterData = characterData;
+  this.name = playerName || 'Player';
 
   this.facing_right = facing_right;
 
   this.other_player = null;
   this.jumped = false;
-    
-  this.MAX_SPEED = .3;
-  this.DX_ACCEL = .05;
+
+  this.MAX_SPEED = stats.maxSpeed || .3;
+  this.DX_ACCEL = stats.acceleration || .05;
   this.DX_DECAY = .02;
+  this.JUMP_VELOCITY = stats.jumpVelocity || 0.4;
   this.PUNCH_TIME = 250;
   this.BLOCK_TIME = 250;
   this.PAIN_TIME = 200;
   this.THROW_TIME = 600;
-  this.PUNCH_RANGE = 70;
-  this.PUNCH_DAMAGE = 5;
-  this.THROW_DAMAGE = 7;
-  this.THROW_RANGE = 70;
+  this.PUNCH_RANGE = stats.punchRange || 70;
+  this.PUNCH_DAMAGE = stats.punchDamage || 5;
+  this.THROW_DAMAGE = stats.throwDamage || 7;
+  this.THROW_RANGE = stats.throwRange || 70;
   this.HIT_MOVE_DISTANCE = 5;
   this.THROWN_SPEED = -.5;
   this.THROWN_TIME = 600;
 
-  this.moveLeft = function() {
+  // Projectile support
+  this.projectiles = [];
+  this.lastProjectileTime = 0;
+  this.projectileData = (characterData && characterData.projectile) ? characterData.projectile : null;
+
+  this.moveLeft = function(dtScale) {
     if (this.action != ACTION_IDLE) {
       return;
     }
@@ -52,12 +64,13 @@ function Player(x, sprite_sheet, facing_right) {
       this.dx = 0;
       return;
     }
-    this.dx -= this.DX_ACCEL;
+    dtScale = dtScale || 1.0;
+    this.dx -= this.DX_ACCEL * dtScale;
     if (this.dx < -this.MAX_SPEED) {
       this.dx = -this.MAX_SPEED;
     }
   }
-  this.moveRight = function() {
+  this.moveRight = function(dtScale) {
     if (this.action != ACTION_IDLE) {
       return;
     }
@@ -67,7 +80,8 @@ function Player(x, sprite_sheet, facing_right) {
       this.dx = 0;
       return;
     }
-    this.dx += this.DX_ACCEL;
+    dtScale = dtScale || 1.0;
+    this.dx += this.DX_ACCEL * dtScale;
     if (this.dx > this.MAX_SPEED) {
       this.dx = this.MAX_SPEED;
     }
@@ -77,7 +91,7 @@ function Player(x, sprite_sheet, facing_right) {
     if (this.jumped) {
       return;
     }
-    this.dy = 0.4;  // set some initial upwards velocity
+    this.dy = this.JUMP_VELOCITY;  // set some initial upwards velocity
     this.jumped = true;
   }
   this.setAction = function(newAction) {
@@ -124,6 +138,33 @@ function Player(x, sprite_sheet, facing_right) {
     }
   }
 
+  this.fireProjectile = function(currentTime) {
+    // Only fire if character has projectile ability
+    if (!this.projectileData) {
+      return;
+    }
+
+    // Check cooldown
+    var cooldown = this.projectileData.cooldown || 1000;
+    if (currentTime - this.lastProjectileTime < cooldown) {
+      return;
+    }
+
+    // Create projectile at player position, slightly in front
+    var direction = this.facing_right ? 1 : -1;
+    var offsetX = direction * 30; // Spawn projectile slightly in front
+    var projectile = new Projectile(
+      this.x + offsetX,
+      this.y + 48, // Mid-height of player sprite
+      direction,
+      this,
+      this.projectileData
+    );
+
+    this.projectiles.push(projectile);
+    this.lastProjectileTime = currentTime;
+  }
+
   this.thrown = function(damage) {
     this.health -= damage;
     this.setAction(ACTION_THROWN);
@@ -157,19 +198,22 @@ function Player(x, sprite_sheet, facing_right) {
     return Math.abs(this.x - other.x);
   }
 
-  this.update = function(dt) { 
+  this.update = function(dt) {
+    // Normalize dt to 60 FPS baseline (16.67ms) for frame-rate independent physics
+    var dtScale = dt / 16.67;
+
     // Compute the desired vertical position of the character by moving one
     // time step along the velocity vector in the vertical axis.
     var newY = this.y + this.dy * dt;
-    this.dy -= 0.03;
+    this.dy -= 0.03 * dtScale;
 
     this.x += this.dx * dt;
     if (Math.abs(this.dx) < this.DX_DECAY) {
       this.dx = 0;
     } else if (this.dx > 0) {
-      this.dx -= this.DX_DECAY;
+      this.dx -= this.DX_DECAY * dtScale;
     } else if (this.dx < 0) {
-      this.dx += this.DX_DECAY;
+      this.dx += this.DX_DECAY * dtScale;
     }
 
     // If the desired position intersects with the landscape then stop the jump.
@@ -180,7 +224,7 @@ function Player(x, sprite_sheet, facing_right) {
       this.dy = 0;
     }
     this.y = newY;
-    
+
     if (this.action_timer > 0) {
       this.action_timer -= dt;
 
@@ -191,6 +235,23 @@ function Player(x, sprite_sheet, facing_right) {
     }
 
     this.facing_right = (this.x < this.other_player.x);
+
+    // Update projectiles
+    for (var i = this.projectiles.length - 1; i >= 0; i--) {
+      var projectile = this.projectiles[i];
+      projectile.update(dt);
+
+      // Check collision with other player
+      if (this.other_player && projectile.checkCollision(this.other_player)) {
+        this.other_player.hit(projectile.damage);
+        projectile.active = false;
+      }
+
+      // Remove inactive projectiles
+      if (!projectile.active) {
+        this.projectiles.splice(i, 1);
+      }
+    }
   }
 
   this.isAlive = function() {

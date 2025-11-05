@@ -5,7 +5,7 @@ const ServerLevel = require('./ServerLevel');
 const ServerPlayer = require('./ServerPlayer');
 
 class GameRoom {
-  constructor(roomId, player1Socket, player2Socket, io) {
+  constructor(roomId, player1Socket, player2Socket, io, player1CharacterData, player2CharacterData) {
     this.roomId = roomId;
     this.io = io;
 
@@ -16,14 +16,15 @@ class GameRoom {
     // Game state
     this.level = new ServerLevel();
 
-    // Spawn players at correct ground height
-    const p1X = 200;
-    const p2X = 600;
+    // Spawn players at correct positions in the static arena
+    const levelWidth = this.level.getWidth();
+    const p1X = levelWidth * 0.3;  // 30% from left
+    const p2X = levelWidth * 0.7;  // 70% from left
     const p1Y = this.level.heightAt(p1X);
     const p2Y = this.level.heightAt(p2X);
 
-    this.player1 = new ServerPlayer(1, this.level, p1X, p1Y);
-    this.player2 = new ServerPlayer(2, this.level, p2X, p2Y);
+    this.player1 = new ServerPlayer(1, this.level, p1X, p1Y, player1CharacterData);
+    this.player2 = new ServerPlayer(2, this.level, p2X, p2Y, player2CharacterData);
 
     this.gameState = 'waiting'; // waiting, playing, game_over
     this.lastUpdate = Date.now();

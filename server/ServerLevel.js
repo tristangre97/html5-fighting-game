@@ -19,37 +19,72 @@ class SeededRandom {
 class ServerLevel {
   constructor(seed) {
     this.seed = seed || Math.floor(Math.random() * 1000000);
-    this.heights = [];
     this.generate();
   }
 
   generate() {
-    this.heights = [];
     const rng = new SeededRandom(this.seed);
-    let height = 100;
-    let change = 0;
 
-    for (let i = 0; i < 5000; i++) {
-      change += (rng.random() - 0.5) * 20;
-      change = Math.max(-50, Math.min(50, change));
-      height += change;
-      height = Math.max(0, Math.min(400, height));
+    // Static level with platforms (matches client)
+    this.levelData = {
+      width: 1600,
+      height: 600,
+      groundHeight: 50,
+      platforms: []
+    };
 
-      // Randomly create holes
-      if (rng.random() < 0.01) {
-        this.heights.push(-100);
-      } else {
-        this.heights.push(height);
-      }
+    // Generate random platforms
+    const numPlatforms = 5 + Math.floor(rng.random() * 3); // 5-7 platforms
+
+    for (let i = 0; i < numPlatforms; i++) {
+      const platform = {
+        x: 150 + rng.random() * (this.levelData.width - 400),
+        y: 150 + rng.random() * 250,
+        width: 150 + rng.random() * 200,
+        height: 20
+      };
+      this.levelData.platforms.push(platform);
     }
   }
 
   heightAt(x) {
-    const index = Math.floor(x / 100);
-    if (index < 0 || index >= this.heights.length) {
-      return 0;
+    // Check if position is on a platform
+    for (const platform of this.levelData.platforms) {
+      if (x >= platform.x && x <= platform.x + platform.width) {
+        return platform.y + platform.height;
+      }
     }
-    return this.heights[index];
+
+    // Return ground height
+    return this.levelData.groundHeight;
+  }
+
+  getPlatformAt(x, y) {
+    for (const platform of this.levelData.platforms) {
+      if (x >= platform.x &&
+          x <= platform.x + platform.width &&
+          y >= platform.y &&
+          y <= platform.y + platform.height + 10) {
+        return platform;
+      }
+    }
+    return null;
+  }
+
+  getPlatforms() {
+    return this.levelData.platforms;
+  }
+
+  getWidth() {
+    return this.levelData.width;
+  }
+
+  getHeight() {
+    return this.levelData.height;
+  }
+
+  getGroundHeight() {
+    return this.levelData.groundHeight;
   }
 
   // Serialize level data for clients (send seed instead of full array)
