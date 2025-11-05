@@ -3,7 +3,7 @@
 
 // Server-side player physics and state (authoritative)
 class ServerPlayer {
-  constructor(playerNumber, level, x, y) {
+  constructor(playerNumber, level, x, y, characterData) {
     this.playerNumber = playerNumber;
     this.level = level;
 
@@ -13,8 +13,12 @@ class ServerPlayer {
     this.dx = 0;
     this.dy = 0;
 
-    // Game state
-    this.health = 100;
+    // Apply character stats or use defaults
+    const stats = (characterData && characterData.stats) ? characterData.stats : {};
+    this.health = stats.health || 100;
+    this.maxHealth = stats.health || 100;
+    this.characterData = characterData;
+
     this.facing_right = playerNumber === 1;
 
     // Action state
@@ -25,19 +29,19 @@ class ServerPlayer {
     this.airborne_time = 0;
     this.can_jump = true;
 
-    // Constants
-    this.MAX_SPEED = 0.3;
-    this.ACCELERATION = 0.05;
+    // Constants - use character stats or defaults
+    this.MAX_SPEED = stats.maxSpeed || 0.3;
+    this.ACCELERATION = stats.acceleration || 0.05;
     this.DECAY = 0.02;
     this.GRAVITY = 0.03;
-    this.JUMP_VELOCITY = 0.4;
+    this.JUMP_VELOCITY = stats.jumpVelocity || 0.4;
     this.JUMP_TIME = 800;
 
     // Combat constants
-    this.PUNCH_RANGE = 70;
-    this.PUNCH_DAMAGE = 5;
-    this.THROW_RANGE = 70;
-    this.THROW_DAMAGE = 7;
+    this.PUNCH_RANGE = stats.punchRange || 70;
+    this.PUNCH_DAMAGE = stats.punchDamage || 5;
+    this.THROW_RANGE = stats.throwRange || 70;
+    this.THROW_DAMAGE = stats.throwDamage || 7;
 
     // Pit damage
     this.PIT_DAMAGE = 0.1; // per millisecond

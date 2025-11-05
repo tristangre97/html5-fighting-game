@@ -14,30 +14,36 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-function Player(x, sprite_sheet, facing_right) {
+function Player(x, sprite_sheet, facing_right, characterData) {
   this.x = x;
   this.dx = 0;
   this.y = level.getHeightAtPoint(x);
   this.dy = 0;
-  this.health = 100;
+
+  // Apply character stats or use defaults
+  var stats = (characterData && characterData.stats) ? characterData.stats : {};
+  this.health = stats.health || 100;
+  this.maxHealth = stats.health || 100;
   this.sprite = new AnimatingSprite(sprite_sheet);
+  this.characterData = characterData;
 
   this.facing_right = facing_right;
 
   this.other_player = null;
   this.jumped = false;
-    
-  this.MAX_SPEED = .3;
-  this.DX_ACCEL = .05;
+
+  this.MAX_SPEED = stats.maxSpeed || .3;
+  this.DX_ACCEL = stats.acceleration || .05;
   this.DX_DECAY = .02;
+  this.JUMP_VELOCITY = stats.jumpVelocity || 0.4;
   this.PUNCH_TIME = 250;
   this.BLOCK_TIME = 250;
   this.PAIN_TIME = 200;
   this.THROW_TIME = 600;
-  this.PUNCH_RANGE = 70;
-  this.PUNCH_DAMAGE = 5;
-  this.THROW_DAMAGE = 7;
-  this.THROW_RANGE = 70;
+  this.PUNCH_RANGE = stats.punchRange || 70;
+  this.PUNCH_DAMAGE = stats.punchDamage || 5;
+  this.THROW_DAMAGE = stats.throwDamage || 7;
+  this.THROW_RANGE = stats.throwRange || 70;
   this.HIT_MOVE_DISTANCE = 5;
   this.THROWN_SPEED = -.5;
   this.THROWN_TIME = 600;
@@ -79,7 +85,7 @@ function Player(x, sprite_sheet, facing_right) {
     if (this.jumped) {
       return;
     }
-    this.dy = 0.4;  // set some initial upwards velocity
+    this.dy = this.JUMP_VELOCITY;  // set some initial upwards velocity
     this.jumped = true;
   }
   this.setAction = function(newAction) {

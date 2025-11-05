@@ -67,6 +67,11 @@ var network = null;
 var myPlayerNumber = null;
 var lastInputState = {};
 
+// Character selection
+var selectedP1Character = null;
+var selectedP2Character = null;
+var pendingGameMode = null;
+
 // Controller and touch support
 var gamepadManager = null;
 var touchControls = null;
@@ -82,8 +87,13 @@ function resetGameState() {
   level = new Level();
   win.reset();
   var player_offset = win.width/2 - INITIAL_PLAYER_SEPARATION;
-  player1 = new Player(player_offset, 'character.png', true);
-  player2 = new Player(win.right() - player_offset, 'character_2.png', false);
+
+  // Use selected characters or defaults
+  var p1Char = selectedP1Character || CharacterManager.getCharacterById('fighter1');
+  var p2Char = selectedP2Character || CharacterManager.getCharacterById('fighter2');
+
+  player1 = new Player(player_offset, p1Char.sprite, true, p1Char);
+  player2 = new Player(win.right() - player_offset, p2Char.sprite, false, p2Char);
   player1.other_player = player2;
   player2.other_player = player1;
   keys = new KeyWatcher();
@@ -450,6 +460,144 @@ function startLocalMode() {
   resetGameState();
 }
 
+// Character Selection Functions
+function initializeCharacterSelection() {
+  var $grid = $('#character-grid');
+  var characters = CharacterManager.getCharacters();
+
+  // Clear existing grid
+  $grid.empty();
+
+  // Create character cards
+  characters.forEach(function(char) {
+    var $card = $('<div>')
+      .addClass('character-card bg-white/10 backdrop-blur-sm rounded-xl p-4 border-2 border-white/20 cursor-pointer transition-all duration-300 hover:scale-105 hover:border-purple-400 hover:shadow-xl')
+      .attr('data-char-id', char.id)
+      .html('<div class="aspect-square bg-white/5 rounded-lg mb-3 flex items-center justify-center overflow-hidden">' +
+            '<img src="' + char.sprite + '" alt="' + char.name + '" class="w-full h-full object-cover" onerror="this.style.display=\'none\'">' +
+            '</div>' +
+            '<div class="text-white font-bold text-sm text-center pixel-font">' + char.name + '</div>' +
+            '<div class="text-white/60 text-xs text-center mt-1">' + (char.description || '') + '</div>');
+
+    $card.click(function() {
+      selectCharacter(char);
+    });
+
+    $grid.append($card);
+  });
+
+  // Set up character selection UI buttons
+  $('#char-back-btn').click(function() {
+    hideCharacterSelection();
+  });
+
+  $('#char-start-btn').click(function() {
+    if (selectedP1Character && (selectedP2Character || pendingGameMode === 'online')) {
+      startGameWithCharacters();
+    }
+  });
+}
+
+function showCharacterSelection(modeText) {
+  $('#char-select-mode-text').text(modeText);
+  $('#menu').hide();
+  $('#character-select').removeClass('hidden').addClass('animate-fadeIn');
+
+  // Reset selections for new session
+  selectedP1Character = null;
+  selectedP2Character = null;
+  nextPlayerToSelect = 1;
+  updateCharacterSelection();
+}
+
+function hideCharacterSelection() {
+  $('#character-select').addClass('hidden');
+  $('#menu').show();
+  selectedP1Character = null;
+  selectedP2Character = null;
+  pendingGameMode = null;
+}
+
+var nextPlayerToSelect = 1; // Toggle between 1 and 2
+
+function selectCharacter(character) {
+  // For local mode: alternate between P1 and P2
+  // For online mode: only select for local player
+  if (pendingGameMode === 'local') {
+    if (!selectedP1Character) {
+      selectedP1Character = character;
+      nextPlayerToSelect = 2;
+    } else if (!selectedP2Character) {
+      selectedP2Character = character;
+      nextPlayerToSelect = 1;
+    } else {
+      // Both selected, allow changing
+      if (nextPlayerToSelect === 1) {
+        selectedP1Character = character;
+        nextPlayerToSelect = 2;
+      } else {
+        selectedP2Character = character;
+        nextPlayerToSelect = 1;
+      }
+    }
+  } else {
+    // Online mode - only select for player 1 for now
+    selectedP1Character = character;
+    selectedP2Character = character; // Default P2 to same for now
+  }
+
+  updateCharacterSelection();
+}
+
+function updateCharacterSelection() {
+  // Update P1 display
+  if (selectedP1Character) {
+    $('#p1-selection').text(selectedP1Character.name);
+    $('#p1-hp').text(selectedP1Character.stats.health);
+    $('#p1-dmg').text(selectedP1Character.stats.punchDamage);
+    $('#p1-spd').text(Math.round(selectedP1Character.stats.maxSpeed * 100));
+    $('#p1-stats').removeClass('hidden');
+  } else {
+    $('#p1-selection').text('- Not Selected -');
+    $('#p1-stats').addClass('hidden');
+  }
+
+  // Update P2 display
+  if (selectedP2Character) {
+    $('#p2-selection').text(selectedP2Character.name);
+    $('#p2-hp').text(selectedP2Character.stats.health);
+    $('#p2-dmg').text(selectedP2Character.stats.punchDamage);
+    $('#p2-spd').text(Math.round(selectedP2Character.stats.maxSpeed * 100));
+    $('#p2-stats').removeClass('hidden');
+  } else {
+    $('#p2-selection').text('- Not Selected -');
+    $('#p2-stats').addClass('hidden');
+  }
+
+  // Highlight selected characters in grid
+  $('.character-card').removeClass('border-green-500 border-4').addClass('border-white/20 border-2');
+  if (selectedP1Character) {
+    $('.character-card[data-char-id="' + selectedP1Character.id + '"]').addClass('border-green-500 border-4').removeClass('border-white/20 border-2');
+  }
+  if (selectedP2Character && selectedP2Character.id !== (selectedP1Character && selectedP1Character.id)) {
+    $('.character-card[data-char-id="' + selectedP2Character.id + '"]').addClass('border-blue-500 border-4').removeClass('border-white/20 border-2');
+  }
+
+  // Enable/disable start button
+  var canStart = pendingGameMode === 'online' ? selectedP1Character : (selectedP1Character && selectedP2Character);
+  $('#char-start-btn').prop('disabled', !canStart);
+}
+
+function startGameWithCharacters() {
+  $('#character-select').addClass('hidden');
+
+  if (pendingGameMode === 'local') {
+    startLocalMode();
+  } else if (pendingGameMode === 'online') {
+    startOnlineMode();
+  }
+}
+
 function KeyWatcher() {
   this.keys = {}
   this.lastKey = undefined;
@@ -496,13 +644,21 @@ $(document).ready(function() {
     console.log('FPS changed to:', TARGET_FPS);
   });
 
+  // Load characters first
+  CharacterManager.load(function(characters) {
+    console.log('Loaded', characters.length, 'characters');
+    initializeCharacterSelection();
+  });
+
   // Set up mode selection buttons
   $('#local-btn').click(function() {
-    startLocalMode();
+    pendingGameMode = 'local';
+    showCharacterSelection('Local 2-Player');
   });
 
   $('#online-btn').click(function() {
-    startOnlineMode();
+    pendingGameMode = 'online';
+    showCharacterSelection('Online Multiplayer');
   });
 
   $(document).keydown(function(event) {

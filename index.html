@@ -399,6 +399,71 @@ limitations under the License.
     </div>
   </div>
 
+  <!-- Character Selection Screen -->
+  <div id="character-select" class="hidden fixed inset-0 flex items-center justify-center z-[1000] bg-gradient-to-br from-purple-900/50 to-indigo-900/50 backdrop-blur-sm animate-fadeIn">
+    <div class="bg-white/10 backdrop-blur-md rounded-3xl shadow-2xl p-8 md:p-12 max-w-6xl w-full mx-4 border border-white/20 animate-slideUp">
+
+      <!-- Title -->
+      <div class="text-center mb-8">
+        <h2 class="pixel-font text-2xl md:text-4xl text-white mb-2 drop-shadow-lg">
+          SELECT YOUR FIGHTER
+        </h2>
+        <p class="text-white/60 text-sm" id="char-select-mode-text">Local 2-Player</p>
+      </div>
+
+      <!-- Character Grid -->
+      <div id="character-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
+        <!-- Characters will be dynamically loaded here -->
+      </div>
+
+      <!-- Selected Characters Display -->
+      <div class="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Player 1 Selection -->
+          <div class="text-center">
+            <div class="text-white/60 text-xs mb-2">PLAYER 1</div>
+            <div id="p1-selection" class="text-white font-bold text-lg pixel-font">
+              - Not Selected -
+            </div>
+            <div id="p1-stats" class="text-white/50 text-xs mt-2 hidden">
+              <div>HP: <span class="text-green-400" id="p1-hp">-</span></div>
+              <div>DMG: <span class="text-red-400" id="p1-dmg">-</span></div>
+              <div>SPD: <span class="text-blue-400" id="p1-spd">-</span></div>
+            </div>
+          </div>
+
+          <!-- Player 2 Selection -->
+          <div class="text-center">
+            <div class="text-white/60 text-xs mb-2">PLAYER 2</div>
+            <div id="p2-selection" class="text-white font-bold text-lg pixel-font">
+              - Not Selected -
+            </div>
+            <div id="p2-stats" class="text-white/50 text-xs mt-2 hidden">
+              <div>HP: <span class="text-green-400" id="p2-hp">-</span></div>
+              <div>DMG: <span class="text-red-400" id="p2-dmg">-</span></div>
+              <div>SPD: <span class="text-blue-400" id="p2-spd">-</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex gap-4">
+        <button id="char-back-btn" class="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 border border-white/20">
+          ← Back
+        </button>
+        <button id="char-start-btn" class="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none" disabled>
+          Start Fight! →
+        </button>
+      </div>
+
+      <!-- Hint -->
+      <div class="mt-4 text-center text-white/50 text-xs">
+        Click a character to select. Both players must choose a fighter to continue.
+      </div>
+    </div>
+  </div>
+
   <!-- Status Messages -->
   <div id="status" class="hidden fixed top-6 left-1/2 transform -translate-x-1/2 z-[999] animate-slideUp">
     <div class="bg-white/10 backdrop-blur-md text-white px-6 py-3 rounded-full shadow-2xl border border-white/20 font-semibold">
@@ -480,6 +545,7 @@ limitations under the License.
   <!-- Load scripts after DOM is ready -->
   <script src='http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.js'></script>
   <script src='/socket.io/socket.io.js'></script>
+  <script src='characters.js'></script>
   <script src='window.js'></script>
   <script src='level.js'></script>
   <script src='sprite.js'></script>

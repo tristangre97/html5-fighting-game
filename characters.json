@@ -1,0 +1,36 @@
+{
+  "characters": [
+    {
+      "id": "fighter1",
+      "name": "Red Fighter",
+      "sprite": "character.png",
+      "stats": {
+        "health": 100,
+        "maxSpeed": 0.3,
+        "acceleration": 0.05,
+        "jumpVelocity": 0.4,
+        "punchDamage": 5,
+        "punchRange": 70,
+        "throwDamage": 7,
+        "throwRange": 70
+      },
+      "description": "Balanced fighter with standard stats"
+    },
+    {
+      "id": "fighter2",
+      "name": "Blue Fighter",
+      "sprite": "character_2.png",
+      "stats": {
+        "health": 100,
+        "maxSpeed": 0.3,
+        "acceleration": 0.05,
+        "jumpVelocity": 0.4,
+        "punchDamage": 5,
+        "punchRange": 70,
+        "throwDamage": 7,
+        "throwRange": 70
+      },
+      "description": "Balanced fighter with standard stats"
+    }
+  ]
+}
