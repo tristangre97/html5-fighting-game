@@ -22,8 +22,8 @@ class GameRoom {
     this.lastUpdate = Date.now();
     this.updateInterval = null;
 
-    // Update rate: 30 updates per second (same as original game)
-    this.UPDATE_RATE = 30;
+    // Update rate: 60 updates per second for smoother gameplay
+    this.UPDATE_RATE = 60;
     this.UPDATE_INTERVAL = 1000 / this.UPDATE_RATE;
   }
 

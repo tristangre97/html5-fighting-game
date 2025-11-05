@@ -1,12 +1,13 @@
 /*
 Copyright 2010 Google Inc.
+Copyright 2025 - HTML5 Fighting Game Multiplayer
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
      http://www.apache.org/licenses/LICENSE-2.0
-     
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,24 +19,63 @@ var ORIGIN_VERTICAL_OFFSET=100;
 var SPRITE_HALF_WIDTH = 96/2;
 
 function Window(width, height) {
+  this.baseWidth = width;
+  this.baseHeight = height;
   this.width = width;
   this.height = height;
 
   this.scroll_speed = .1;
   this.should_scroll = true;
   this.scroll_location = 0;
- 
-  $('#canvas').attr('width', width);
-  $('#canvas').attr('height', height);
-  this.context = this.getContext();
-  
-  // Flip y-axis, move camera down so (0, 0) isn't touching bottom of this
-  this.context.transform(1, 0, 0, -1, 1, 1);
-  this.context.translate(0, -height + ORIGIN_VERTICAL_OFFSET);
+
+  this.canvas = $('#canvas').get(0);
+  this.context = null;
+
+  // Initial resize
+  this.resize();
 
   this.sky_ = new Image();
   $(this.sky_).attr('src', 'sky.png');
 }
+
+Window.prototype.resize = function() {
+  var container = $('#game-container');
+  var containerWidth = container.width();
+  var containerHeight = container.height();
+
+  // Calculate available space (accounting for HUD and padding)
+  var hudHeight = $('#game-hud').is(':visible') ? 100 : 0;
+  var availableHeight = containerHeight - hudHeight;
+
+  // Calculate scale to fit screen while maintaining aspect ratio
+  var scaleX = containerWidth / this.baseWidth;
+  var scaleY = availableHeight / this.baseHeight;
+  var scale = Math.min(scaleX, scaleY);
+
+  // Apply scale with a maximum to prevent too large on big screens
+  scale = Math.min(scale, 2); // Max 2x scale
+
+  this.width = this.baseWidth;
+  this.height = this.baseHeight;
+
+  // Set canvas display size (CSS)
+  var displayWidth = Math.floor(this.baseWidth * scale);
+  var displayHeight = Math.floor(this.baseHeight * scale);
+
+  this.canvas.style.width = displayWidth + 'px';
+  this.canvas.style.height = displayHeight + 'px';
+
+  // Set canvas internal size (actual resolution)
+  this.canvas.width = this.baseWidth;
+  this.canvas.height = this.baseHeight;
+
+  // Get context and reset transformation
+  this.context = this.getContext();
+
+  // Flip y-axis, move camera down so (0, 0) isn't touching bottom of this
+  this.context.setTransform(1, 0, 0, -1, 1, 1);
+  this.context.translate(0, -this.height + ORIGIN_VERTICAL_OFFSET);
+};
 
 Window.prototype.gameOver = function() {
   this.should_scroll = false;
@@ -48,7 +88,9 @@ Window.prototype.reset = function() {
   this.scroll_location = 0;
   $('#game_over').hide();
   $('#fight').show();
-}
+  // Ensure canvas is properly sized after reset
+  setTimeout(() => this.resize(), 100);
+};
 
 Window.prototype.startGame = function() {
   this.should_scroll = true;

@@ -72,6 +72,11 @@ var touchControls = null;
 var player1JumpPressed = false;
 var player2JumpPressed = false;
 
+// FPS configuration
+var TARGET_FPS = 60; // Target 60fps (can be increased to 120)
+var FRAME_TIME = 1000 / TARGET_FPS;
+var animationFrameId = null;
+
 function resetGameState() {
   level = new Level();
   win.reset();
@@ -213,13 +218,24 @@ function handleOnlineInput() {
   }
 }
 
-function update() {
-  var now = new Date().getTime();
+function update(timestamp) {
+  // Request next frame
+  animationFrameId = requestAnimationFrame(update);
+
+  // Calculate delta time
+  var now = timestamp || new Date().getTime();
   if (lastTimeStamp == 0) {
-    var dt = 0;
-  } else {
-    dt = now - lastTimeStamp;
+    lastTimeStamp = now;
+    return;
   }
+
+  var dt = now - lastTimeStamp;
+
+  // Frame rate limiting (optional, comment out for unlimited FPS)
+  if (dt < FRAME_TIME) {
+    return;
+  }
+
   lastTimeStamp = now;
 
   if (game_state == STATE_PLAYING) {
@@ -256,6 +272,9 @@ function update() {
         player2.health -= dt * PIT_DAMAGE;
       }
 
+      // Update health bars
+      updateHealthBars();
+
       if (!player1.isAlive() || !player2.isAlive()) {
         game_state = STATE_GAME_OVER;
         win.gameOver();
@@ -265,6 +284,7 @@ function update() {
       // In online mode, just send input and render
       // Server handles all game logic
       handleInput();
+      updateHealthBars();
     }
   }
 
@@ -272,7 +292,22 @@ function update() {
   win.draw();
 
   if (DEBUG) {
-    $('#debug').html('Debug:<br>Key: ' + keys.lastKey);
+    var fps = Math.round(1000 / dt);
+    $('#debug').html('FPS: ' + fps + '<br>Key: ' + keys.lastKey).removeClass('hidden');
+  }
+}
+
+// Update health bar display
+function updateHealthBars() {
+  if (player1) {
+    var p1Health = Math.max(0, Math.round(player1.health));
+    $('#p1-health-bar').css('width', p1Health + '%');
+    $('#p1-health-text').text(p1Health);
+  }
+  if (player2) {
+    var p2Health = Math.max(0, Math.round(player2.health));
+    $('#p2-health-bar').css('width', p2Health + '%');
+    $('#p2-health-text').text(p2Health);
   }
 }
 
@@ -282,7 +317,8 @@ function startOnlineMode() {
   network = new NetworkManager();
 
   $('#menu').hide();
-  $('#status').text('Connecting to server...').show();
+  $('#status').removeClass('hidden').addClass('animate-slideUp');
+  $('#status-text').text('Connecting to server...');
 
   // Show touch controls on mobile
   if (touchControls && touchControls.isMobile) {
@@ -290,34 +326,34 @@ function startOnlineMode() {
   }
 
   network.connect().then(() => {
-    $('#status').text('Finding opponent...');
+    $('#status-text').text('Finding opponent...');
     network.findMatch();
   }).catch((error) => {
-    $('#status').text('Connection failed: ' + error.message);
+    $('#status-text').text('Connection failed: ' + error.message);
     setTimeout(() => {
       $('#menu').show();
-      $('#status').hide();
+      $('#status').addClass('hidden');
     }, 3000);
   });
 
   // Set up network event handlers
   network.on('waitingForOpponent', () => {
-    $('#status').text('Waiting for opponent...');
+    $('#status-text').text('Waiting for opponent...');
   });
 
   network.on('matchFound', (data) => {
     console.log('Match found:', data);
     myPlayerNumber = data.playerNumber;
-    $('#status').text('Match found! Waiting for game to start...');
+    $('#status-text').text('Match found! Waiting for game to start...');
   });
 
   network.on('gameStart', (initialState) => {
     console.log('Game starting:', initialState);
-    $('#status').hide();
+    $('#status').addClass('hidden');
+    $('#game-hud').removeClass('hidden');
 
-    // Initialize game with server state
-    level = new Level();
-    level.heights = initialState.level.heights;
+    // Initialize game with server-generated terrain seed
+    level = new Level(initialState.level.seed);
 
     win.reset();
 
@@ -376,7 +412,8 @@ function startOnlineMode() {
       message += 'You lost!';
     }
 
-    $('#status').text(message).show();
+    $('#status-text').text(message);
+    $('#status').removeClass('hidden');
 
     setTimeout(() => {
       network.disconnect();
@@ -385,7 +422,8 @@ function startOnlineMode() {
   });
 
   network.on('opponentDisconnected', () => {
-    $('#status').text('Opponent disconnected!').show();
+    $('#status-text').text('Opponent disconnected!');
+    $('#status').removeClass('hidden');
     game_state = STATE_GAME_OVER;
 
     setTimeout(() => {
@@ -398,6 +436,7 @@ function startOnlineMode() {
 function startLocalMode() {
   gameMode = 'local';
   $('#menu').hide();
+  $('#game-hud').removeClass('hidden');
 
   // Show touch controls on mobile
   if (touchControls && touchControls.isMobile) {
@@ -434,6 +473,25 @@ $(document).ready(function() {
   touchControls = new TouchControlsManager();
   touchControls.init();
 
+  // Handle window resize
+  var resizeTimeout;
+  $(window).resize(function() {
+    // Debounce resize events
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(function() {
+      if (win) {
+        win.resize();
+      }
+    }, 100);
+  });
+
+  // Set up FPS selection
+  $('#fps-select').change(function() {
+    TARGET_FPS = parseInt($(this).val());
+    FRAME_TIME = 1000 / TARGET_FPS;
+    console.log('FPS changed to:', TARGET_FPS);
+  });
+
   // Set up mode selection buttons
   $('#local-btn').click(function() {
     startLocalMode();
@@ -458,13 +516,18 @@ $(document).ready(function() {
     keys.down(event.which);
     if (event.which == KEY_P) {
       DEBUG=!DEBUG;
-      $('#debug').text('');
+      if (!DEBUG) {
+        $('#debug').addClass('hidden');
+      }
     }
     if (event.which == KEY_O) {
       if (win) win.should_scroll = !win.should_scroll;
     }
     if (event.which == KEY_ESC) { // Stop the game (helpful when developing)
-      clearInterval(interval);
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+      }
     }
   });
 
@@ -472,5 +535,6 @@ $(document).ready(function() {
     if (keys) keys.up(event.which);
   });
 
-  interval = setInterval(update, 30);
+  // Start game loop with requestAnimationFrame for smoother performance
+  animationFrameId = requestAnimationFrame(update);
 });

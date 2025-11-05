@@ -1,5 +1,6 @@
 /*
 Copyright 2010 Google Inc.
+Copyright 2025 - HTML5 Fighting Game Multiplayer
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,38 +15,44 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Seeded random number generator (Mulberry32) - matches server implementation
+function SeededRandom(seed) {
+  this.seed = seed;
 
-function buildLevel_() {
-  var level = []
-  var previous_height = 0;
-  var previous_was_hole = false;
+  this.random = function() {
+    var t = this.seed += 0x6D2B79F5;
+    t = Math.imul(t ^ t >>> 15, t | 1);
+    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function buildLevel_(seed) {
+  var level = [];
+  var rng = new SeededRandom(seed);
+  var height = 100;
+  var change = 0;
+
   for (var i = 0; i < 5000; i++) {
-    // Pick new height based on previous height
-    var new_height = previous_height + parseInt((Math.random() - .5) * 3) * 25;
+    change += (rng.random() - 0.5) * 20;
+    change = Math.max(-50, Math.min(50, change));
+    height += change;
+    height = Math.max(0, Math.min(400, height));
 
-    // Limit heights
-    new_height = Math.max(new_height, 0);
-    new_height = Math.min(new_height, 400);
-
-    previous_height = new_height;
-
-    // Randomly put some holes in
-    // (Don't put 2 holes in a row. No holes at start of level)
-    if (i > 8 && !previous_was_hole && Math.random() > .8) {
-      new_height = -900; 
-      previous_was_hole = true;
+    // Randomly create holes
+    if (rng.random() < 0.01) {
+      level.push(-100);
     } else {
-      previous_was_hole = false;
+      level.push(height);
     }
-    
-    level.push(new_height);
   }
   return level;
 }
 
-function Level() {
-  // Heights are in pixels
-  this.level = buildLevel_();
+function Level(seed) {
+  // Generate terrain from seed (or create random seed for local mode)
+  this.seed = seed || Math.floor(Math.random() * 1000000);
+  this.level = buildLevel_(this.seed);
   this.BLOCK_SIZE=100;
 
 
