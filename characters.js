@@ -19,24 +19,29 @@ var CharacterManager = (function() {
       callbacks.push(callback);
     }
 
-    $.getJSON('characters.json', function(data) {
-      characters = data.characters;
-      loaded = true;
+    $.ajax({
+      url: 'characters.json',
+      dataType: 'json',
+      success: function(data) {
+        characters = data.characters;
+        loaded = true;
 
-      // Call all waiting callbacks
-      callbacks.forEach(function(cb) {
-        cb(characters);
-      });
-      callbacks = [];
-    }).fail(function(error) {
-      console.error('Failed to load characters.json:', error);
-      // Fallback to default characters
-      characters = getDefaultCharacters();
-      loaded = true;
-      callbacks.forEach(function(cb) {
-        cb(characters);
-      });
-      callbacks = [];
+        // Call all waiting callbacks
+        callbacks.forEach(function(cb) {
+          cb(characters);
+        });
+        callbacks = [];
+      },
+      error: function(error) {
+        console.error('Failed to load characters.json:', error);
+        // Fallback to default characters
+        characters = getDefaultCharacters();
+        loaded = true;
+        callbacks.forEach(function(cb) {
+          cb(characters);
+        });
+        callbacks = [];
+      }
     });
   }
 
