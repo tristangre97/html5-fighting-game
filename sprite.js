@@ -23,9 +23,10 @@ function AnimatingSprite(resource) {
 
   // The containing Image HTMLElement
   this.image_ = new Image();
-  $(this.image_).load(function() {
+  this.image_.onload = function() {
     that.setState('idle');
-  }).attr('src', resource)
+  };
+  this.image_.src = resource;
 }
 
 AnimatingSprite.states = {
