@@ -256,6 +256,9 @@ function update() {
         player2.health -= dt * PIT_DAMAGE;
       }
 
+      // Update health bars
+      updateHealthBars();
+
       if (!player1.isAlive() || !player2.isAlive()) {
         game_state = STATE_GAME_OVER;
         win.gameOver();
@@ -265,6 +268,7 @@ function update() {
       // In online mode, just send input and render
       // Server handles all game logic
       handleInput();
+      updateHealthBars();
     }
   }
 
@@ -272,7 +276,21 @@ function update() {
   win.draw();
 
   if (DEBUG) {
-    $('#debug').html('Debug:<br>Key: ' + keys.lastKey);
+    $('#debug').html('Debug:<br>Key: ' + keys.lastKey).removeClass('hidden');
+  }
+}
+
+// Update health bar display
+function updateHealthBars() {
+  if (player1) {
+    var p1Health = Math.max(0, Math.round(player1.health));
+    $('#p1-health-bar').css('width', p1Health + '%');
+    $('#p1-health-text').text(p1Health);
+  }
+  if (player2) {
+    var p2Health = Math.max(0, Math.round(player2.health));
+    $('#p2-health-bar').css('width', p2Health + '%');
+    $('#p2-health-text').text(p2Health);
   }
 }
 
@@ -282,7 +300,8 @@ function startOnlineMode() {
   network = new NetworkManager();
 
   $('#menu').hide();
-  $('#status').text('Connecting to server...').show();
+  $('#status').removeClass('hidden').addClass('animate-slideUp');
+  $('#status-text').text('Connecting to server...');
 
   // Show touch controls on mobile
   if (touchControls && touchControls.isMobile) {
@@ -290,30 +309,31 @@ function startOnlineMode() {
   }
 
   network.connect().then(() => {
-    $('#status').text('Finding opponent...');
+    $('#status-text').text('Finding opponent...');
     network.findMatch();
   }).catch((error) => {
-    $('#status').text('Connection failed: ' + error.message);
+    $('#status-text').text('Connection failed: ' + error.message);
     setTimeout(() => {
       $('#menu').show();
-      $('#status').hide();
+      $('#status').addClass('hidden');
     }, 3000);
   });
 
   // Set up network event handlers
   network.on('waitingForOpponent', () => {
-    $('#status').text('Waiting for opponent...');
+    $('#status-text').text('Waiting for opponent...');
   });
 
   network.on('matchFound', (data) => {
     console.log('Match found:', data);
     myPlayerNumber = data.playerNumber;
-    $('#status').text('Match found! Waiting for game to start...');
+    $('#status-text').text('Match found! Waiting for game to start...');
   });
 
   network.on('gameStart', (initialState) => {
     console.log('Game starting:', initialState);
-    $('#status').hide();
+    $('#status').addClass('hidden');
+    $('#game-hud').removeClass('hidden');
 
     // Initialize game with server state
     level = new Level();
@@ -376,7 +396,8 @@ function startOnlineMode() {
       message += 'You lost!';
     }
 
-    $('#status').text(message).show();
+    $('#status-text').text(message);
+    $('#status').removeClass('hidden');
 
     setTimeout(() => {
       network.disconnect();
@@ -385,7 +406,8 @@ function startOnlineMode() {
   });
 
   network.on('opponentDisconnected', () => {
-    $('#status').text('Opponent disconnected!').show();
+    $('#status-text').text('Opponent disconnected!');
+    $('#status').removeClass('hidden');
     game_state = STATE_GAME_OVER;
 
     setTimeout(() => {
@@ -398,6 +420,7 @@ function startOnlineMode() {
 function startLocalMode() {
   gameMode = 'local';
   $('#menu').hide();
+  $('#game-hud').removeClass('hidden');
 
   // Show touch controls on mobile
   if (touchControls && touchControls.isMobile) {
@@ -458,7 +481,9 @@ $(document).ready(function() {
     keys.down(event.which);
     if (event.which == KEY_P) {
       DEBUG=!DEBUG;
-      $('#debug').text('');
+      if (!DEBUG) {
+        $('#debug').addClass('hidden');
+      }
     }
     if (event.which == KEY_O) {
       if (win) win.should_scroll = !win.should_scroll;
