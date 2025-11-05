@@ -97,15 +97,18 @@ function startRound() {
   win.startGame();
 }
 
-function handleInput() {
+function handleInput(dt) {
   if (gameMode === 'local') {
-    handleLocalInput();
+    handleLocalInput(dt);
   } else if (gameMode === 'online') {
     handleOnlineInput();
   }
 }
 
-function handleLocalInput() {
+function handleLocalInput(dt) {
+  // Normalize dt to 60 FPS baseline for frame-rate independent input
+  var dtScale = dt / 16.67;
+
   // Get gamepad input
   var gamepad1Input = null;
   var gamepad2Input = null;
@@ -134,11 +137,11 @@ function handleLocalInput() {
   }
   player1.block(false);
   if (p1Left) {
-    player1.moveLeft();
+    player1.moveLeft(dtScale);
     player1.block(player1.facing_right);
   }
   if (p1Right) {
-    player1.moveRight();
+    player1.moveRight(dtScale);
     player1.block(!player1.facing_right);
   }
 
@@ -156,11 +159,11 @@ function handleLocalInput() {
   }
   player2.block(false);
   if (p2Left) {
-    player2.moveLeft();
+    player2.moveLeft(dtScale);
     player2.block(player2.facing_right);
   }
   if (p2Right) {
-    player2.moveRight();
+    player2.moveRight(dtScale);
     player2.block(!player2.facing_right);
   }
 }
@@ -261,7 +264,7 @@ function update(timestamp) {
         }
       }
 
-      handleInput();
+      handleInput(dt);
       player1.update(dt);
       player2.update(dt);
 
@@ -284,7 +287,7 @@ function update(timestamp) {
     } else if (gameMode === 'online') {
       // In online mode, just send input and render
       // Server handles all game logic
-      handleInput();
+      handleInput(dt);
       updateHealthBars();
     }
   }

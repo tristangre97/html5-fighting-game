@@ -42,7 +42,7 @@ function Player(x, sprite_sheet, facing_right) {
   this.THROWN_SPEED = -.5;
   this.THROWN_TIME = 600;
 
-  this.moveLeft = function() {
+  this.moveLeft = function(dtScale) {
     if (this.action != ACTION_IDLE) {
       return;
     }
@@ -52,12 +52,13 @@ function Player(x, sprite_sheet, facing_right) {
       this.dx = 0;
       return;
     }
-    this.dx -= this.DX_ACCEL;
+    dtScale = dtScale || 1.0;
+    this.dx -= this.DX_ACCEL * dtScale;
     if (this.dx < -this.MAX_SPEED) {
       this.dx = -this.MAX_SPEED;
     }
   }
-  this.moveRight = function() {
+  this.moveRight = function(dtScale) {
     if (this.action != ACTION_IDLE) {
       return;
     }
@@ -67,7 +68,8 @@ function Player(x, sprite_sheet, facing_right) {
       this.dx = 0;
       return;
     }
-    this.dx += this.DX_ACCEL;
+    dtScale = dtScale || 1.0;
+    this.dx += this.DX_ACCEL * dtScale;
     if (this.dx > this.MAX_SPEED) {
       this.dx = this.MAX_SPEED;
     }
@@ -157,19 +159,22 @@ function Player(x, sprite_sheet, facing_right) {
     return Math.abs(this.x - other.x);
   }
 
-  this.update = function(dt) { 
+  this.update = function(dt) {
+    // Normalize dt to 60 FPS baseline (16.67ms) for frame-rate independent physics
+    var dtScale = dt / 16.67;
+
     // Compute the desired vertical position of the character by moving one
     // time step along the velocity vector in the vertical axis.
     var newY = this.y + this.dy * dt;
-    this.dy -= 0.03;
+    this.dy -= 0.03 * dtScale;
 
     this.x += this.dx * dt;
     if (Math.abs(this.dx) < this.DX_DECAY) {
       this.dx = 0;
     } else if (this.dx > 0) {
-      this.dx -= this.DX_DECAY;
+      this.dx -= this.DX_DECAY * dtScale;
     } else if (this.dx < 0) {
-      this.dx += this.DX_DECAY;
+      this.dx += this.DX_DECAY * dtScale;
     }
 
     // If the desired position intersects with the landscape then stop the jump.

@@ -58,6 +58,9 @@ class ServerPlayer {
   }
 
   update(dt, opponent) {
+    // Normalize dt to 60 FPS baseline for frame-rate independent physics
+    const dtScale = dt / 16.67;
+
     // Update action timer
     if (this.action_timer > 0) {
       this.action_timer -= dt;
@@ -69,10 +72,10 @@ class ServerPlayer {
     // Handle input (only if idle or blocking)
     if (this.action === 'idle' || this.action === 'block') {
       if (this.input.left) {
-        this.moveLeft();
+        this.moveLeft(dtScale);
       }
       if (this.input.right) {
-        this.moveRight();
+        this.moveRight(dtScale);
       }
       if (this.input.jump && this.can_jump) {
         this.jump();
@@ -107,8 +110,11 @@ class ServerPlayer {
   }
 
   applyPhysics(dt) {
+    // Normalize dt to 60 FPS baseline (16.67ms) for frame-rate independent physics
+    const dtScale = dt / 16.67;
+
     // Apply gravity
-    this.dy -= this.GRAVITY;
+    this.dy -= this.GRAVITY * dtScale;
 
     // Update position
     this.x += this.dx * dt;
@@ -130,20 +136,20 @@ class ServerPlayer {
 
     // Apply friction
     if (this.dx > 0) {
-      this.dx = Math.max(0, this.dx - this.DECAY);
+      this.dx = Math.max(0, this.dx - this.DECAY * dtScale);
     } else if (this.dx < 0) {
-      this.dx = Math.min(0, this.dx + this.DECAY);
+      this.dx = Math.min(0, this.dx + this.DECAY * dtScale);
     }
   }
 
-  moveLeft() {
+  moveLeft(dtScale = 1.0) {
     if (this.action !== 'idle' && this.action !== 'block') return;
-    this.dx = Math.max(-this.MAX_SPEED, this.dx - this.ACCELERATION);
+    this.dx = Math.max(-this.MAX_SPEED, this.dx - this.ACCELERATION * dtScale);
   }
 
-  moveRight() {
+  moveRight(dtScale = 1.0) {
     if (this.action !== 'idle' && this.action !== 'block') return;
-    this.dx = Math.min(this.MAX_SPEED, this.dx + this.ACCELERATION);
+    this.dx = Math.min(this.MAX_SPEED, this.dx + this.ACCELERATION * dtScale);
   }
 
   jump() {
