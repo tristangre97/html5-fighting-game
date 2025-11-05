@@ -15,8 +15,15 @@ class GameRoom {
 
     // Game state
     this.level = new ServerLevel();
-    this.player1 = new ServerPlayer(1, this.level, 200, 100);
-    this.player2 = new ServerPlayer(2, this.level, 400, 100);
+
+    // Spawn players at correct ground height
+    const p1X = 200;
+    const p2X = 600;
+    const p1Y = this.level.heightAt(p1X);
+    const p2Y = this.level.heightAt(p2X);
+
+    this.player1 = new ServerPlayer(1, this.level, p1X, p1Y);
+    this.player2 = new ServerPlayer(2, this.level, p2X, p2Y);
 
     this.gameState = 'waiting'; // waiting, playing, game_over
     this.lastUpdate = Date.now();
