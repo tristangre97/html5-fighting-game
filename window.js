@@ -172,9 +172,11 @@ Window.prototype.drawPlayerName = function(player, x, y) {
   this.context.setTransform(1, 0, 0, 1, 0, 0);
 
   // Calculate position above player's head
-  // Account for the flipped y-axis and vertical offset
+  // Player sprite is 96 pixels tall, feet are at y, head is at y+96
+  // We want the name about 10 pixels above the head
   var nameX = x;
-  var nameY = this.canvas.height - (y + 120 - ORIGIN_VERTICAL_OFFSET);
+  var worldNameY = y + 96 + 10;  // 96 for sprite height + 10 pixels above head
+  var nameY = this.canvas.height - worldNameY - ORIGIN_VERTICAL_OFFSET;
 
   // Set text properties
   this.context.font = 'bold 14px Arial';
