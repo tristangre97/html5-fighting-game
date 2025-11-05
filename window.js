@@ -205,6 +205,11 @@ Window.prototype.drawPlayerName = function(player, x, y) {
 }
 
 Window.prototype.draw = function() {
+  // Don't draw if game is not initialized
+  if (!level || !player1 || !player2) {
+    return;
+  }
+
   // Save context and apply camera transform
   this.context.save();
   this.context.translate(-this.cameraX, 0);
