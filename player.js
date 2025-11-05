@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-function Player(x, sprite_sheet, facing_right, characterData) {
+function Player(x, sprite_sheet, facing_right, characterData, playerName) {
   this.x = x;
   this.dx = 0;
   this.y = level.getHeightAtPoint(x);
@@ -26,6 +26,7 @@ function Player(x, sprite_sheet, facing_right, characterData) {
   this.maxHealth = stats.health || 100;
   this.sprite = new AnimatingSprite(sprite_sheet);
   this.characterData = characterData;
+  this.name = playerName || 'Player';
 
   this.facing_right = facing_right;
 

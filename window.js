@@ -129,11 +129,14 @@ Window.prototype.drawPlayer = function(player) {
   var y = player.y;
   player.sprite.drawAt(this.context, x, player.y, !player.facing_right);
 
+  // Draw player name above head
+  this.drawPlayerName(player, x, y);
+
   if (DEBUG) {
     // Draw dot at foot location
     this.context.fillStyle = 'white';
     this.context.fillRect(x-3, player.y-3, 6, 6);
-   
+
     // Hit box
     this.context.strokeStyle = 'white';
     this.context.fillStyle = 'rgba(255, 255, 0, .5)';
@@ -146,6 +149,48 @@ Window.prototype.drawPlayer = function(player) {
     this.context.stroke();
     this.context.fill();
   };
+}
+
+Window.prototype.drawPlayerName = function(player, x, y) {
+  if (!player.name) return;
+
+  // Save current context state
+  this.context.save();
+
+  // Reset transformation for text (so it's not flipped)
+  this.context.setTransform(1, 0, 0, 1, 0, 0);
+
+  // Calculate position above player's head
+  // Account for the flipped y-axis and vertical offset
+  var nameX = x;
+  var nameY = this.canvas.height - (y + 120 - ORIGIN_VERTICAL_OFFSET);
+
+  // Set text properties
+  this.context.font = 'bold 14px Arial';
+  this.context.textAlign = 'center';
+  this.context.textBaseline = 'bottom';
+
+  // Measure text for background
+  var textWidth = this.context.measureText(player.name).width;
+  var padding = 6;
+  var bgWidth = textWidth + padding * 2;
+  var bgHeight = 20;
+
+  // Draw background with semi-transparent black
+  this.context.fillStyle = 'rgba(0, 0, 0, 0.6)';
+  this.context.fillRect(nameX - bgWidth/2, nameY - bgHeight, bgWidth, bgHeight);
+
+  // Draw border
+  this.context.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+  this.context.lineWidth = 2;
+  this.context.strokeRect(nameX - bgWidth/2, nameY - bgHeight, bgWidth, bgHeight);
+
+  // Draw text with white color
+  this.context.fillStyle = '#FFFFFF';
+  this.context.fillText(player.name, nameX, nameY - 3);
+
+  // Restore context state
+  this.context.restore();
 }
 
 Window.prototype.draw = function() {

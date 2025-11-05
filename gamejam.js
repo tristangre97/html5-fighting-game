@@ -72,6 +72,10 @@ var selectedP1Character = null;
 var selectedP2Character = null;
 var pendingGameMode = null;
 
+// Player names
+var player1Name = 'Player 1';
+var player2Name = 'Player 2';
+
 // Controller and touch support
 var gamepadManager = null;
 var touchControls = null;
@@ -92,8 +96,8 @@ function resetGameState() {
   var p1Char = selectedP1Character || CharacterManager.getCharacterById('fighter1');
   var p2Char = selectedP2Character || CharacterManager.getCharacterById('fighter2');
 
-  player1 = new Player(player_offset, p1Char.sprite, true, p1Char);
-  player2 = new Player(win.right() - player_offset, p2Char.sprite, false, p2Char);
+  player1 = new Player(player_offset, p1Char.sprite, true, p1Char, player1Name);
+  player2 = new Player(win.right() - player_offset, p2Char.sprite, false, p2Char, player2Name);
   player1.other_player = player2;
   player2.other_player = player1;
   keys = new KeyWatcher();
@@ -371,12 +375,22 @@ function startOnlineMode() {
 
     win.reset();
 
-    // Create players based on server initial state
-    var char1 = myPlayerNumber === 1 ? 'character.png' : 'character_2.png';
-    var char2 = myPlayerNumber === 1 ? 'character_2.png' : 'character.png';
+    // Use selected characters or defaults
+    var p1Char = selectedP1Character || CharacterManager.getCharacterById('fighter1');
+    var p2Char = selectedP2Character || CharacterManager.getCharacterById('fighter2');
 
-    player1 = new Player(initialState.player1.x, char1, true);
-    player2 = new Player(initialState.player2.x, char2, false);
+    // Create players based on server initial state and selected characters
+    var char1Sprite = myPlayerNumber === 1 ? p1Char.sprite : p2Char.sprite;
+    var char2Sprite = myPlayerNumber === 1 ? p2Char.sprite : p1Char.sprite;
+    var char1Data = myPlayerNumber === 1 ? p1Char : p2Char;
+    var char2Data = myPlayerNumber === 1 ? p2Char : p1Char;
+
+    // For online mode, use player names (opponent gets default name for now)
+    var p1Name = myPlayerNumber === 1 ? player1Name : 'Opponent';
+    var p2Name = myPlayerNumber === 2 ? player1Name : 'Opponent';
+
+    player1 = new Player(initialState.player1.x, char1Sprite, true, char1Data, p1Name);
+    player2 = new Player(initialState.player2.x, char2Sprite, false, char2Data, p2Name);
 
     player1.y = initialState.player1.y;
     player2.y = initialState.player2.y;
@@ -668,6 +682,21 @@ $(document).ready(function() {
     FRAME_TIME = 1000 / TARGET_FPS;
     console.log('FPS changed to:', TARGET_FPS);
   });
+
+  // Set up player name inputs
+  $('#p1-name-input').on('input', function() {
+    var name = $(this).val().trim();
+    player1Name = name || 'Player 1';
+  });
+
+  $('#p2-name-input').on('input', function() {
+    var name = $(this).val().trim();
+    player2Name = name || 'Player 2';
+  });
+
+  // Initialize player names from inputs
+  player1Name = $('#p1-name-input').val().trim() || 'Player 1';
+  player2Name = $('#p2-name-input').val().trim() || 'Player 2';
 
   // Load characters first
   CharacterManager.load(function(characters) {
