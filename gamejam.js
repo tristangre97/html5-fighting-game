@@ -29,11 +29,13 @@ var KEY_D=68;
 var KEY_X=88;
 var KEY_R=82;
 var KEY_ESC=27;
+var KEY_E=69;
 var KEY_O=79;
 var KEY_T=84;
 var KEY_P=80;
 var KEY_COMMA=188;
 var KEY_PERIOD=190;
+var KEY_SLASH=191;
 var KEY_LEFT=37;
 var KEY_RIGHT=39;
 var KEY_UP=38;
@@ -146,12 +148,16 @@ function handleLocalInput(dt) {
   var p1Right = keys.isPressed(KEY_D) || (gamepad1Input && gamepad1Input.right);
   var p1Punch = keys.isPressed(KEY_R) || (gamepad1Input && gamepad1Input.punch);
   var p1Throw = keys.isPressed(KEY_T) || (gamepad1Input && gamepad1Input.throw);
+  var p1Projectile = keys.isPressed(KEY_E) || (gamepad1Input && gamepad1Input.projectile);
 
   if (p1Punch) {
     player1.punch();
   }
   if (p1Throw) {
     player1.throw_em();
+  }
+  if (p1Projectile) {
+    player1.fireProjectile(Date.now());
   }
   player1.block(false);
   if (p1Left) {
@@ -168,12 +174,16 @@ function handleLocalInput(dt) {
   var p2Right = keys.isPressed(KEY_RIGHT) || (gamepad2Input && gamepad2Input.right);
   var p2Punch = keys.isPressed(KEY_COMMA) || (gamepad2Input && gamepad2Input.punch);
   var p2Throw = keys.isPressed(KEY_PERIOD) || (gamepad2Input && gamepad2Input.throw);
+  var p2Projectile = keys.isPressed(KEY_SLASH) || (gamepad2Input && gamepad2Input.projectile);
 
   if (p2Punch) {
     player2.punch();
   }
   if (p2Throw) {
     player2.throw_em();
+  }
+  if (p2Projectile) {
+    player2.fireProjectile(Date.now());
   }
   player2.block(false);
   if (p2Left) {
@@ -219,6 +229,9 @@ function handleOnlineInput() {
     throw: keys.isPressed(KEY_T) || keys.isPressed(KEY_PERIOD) ||
            (gamepadInput && gamepadInput.throw) ||
            (touchInput && touchInput.throw),
+    projectile: keys.isPressed(KEY_E) || keys.isPressed(KEY_SLASH) ||
+                (gamepadInput && gamepadInput.projectile) ||
+                (touchInput && touchInput.projectile),
     block: keys.isPressed(KEY_A) || keys.isPressed(KEY_D) ||
            keys.isPressed(KEY_LEFT) || keys.isPressed(KEY_RIGHT) ||
            (gamepadInput && gamepadInput.block) ||
@@ -349,7 +362,9 @@ function startOnlineMode() {
 
   network.connect().then(() => {
     $('#status-text').text('Finding opponent...');
-    network.findMatch();
+    // Send selected character or default
+    var myCharacter = selectedP1Character || CharacterManager.getCharacterById('fighter1');
+    network.findMatch(myCharacter);
   }).catch((error) => {
     $('#status-text').text('Connection failed: ' + error.message);
     setTimeout(() => {

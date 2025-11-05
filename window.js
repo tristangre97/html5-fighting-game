@@ -222,6 +222,18 @@ Window.prototype.draw = function() {
   this.drawPlayer(player1);
   this.drawPlayer(player2);
 
+  // Draw projectiles
+  if (player1 && player1.projectiles) {
+    for (var i = 0; i < player1.projectiles.length; i++) {
+      player1.projectiles[i].draw(this.context, this.cameraX);
+    }
+  }
+  if (player2 && player2.projectiles) {
+    for (var i = 0; i < player2.projectiles.length; i++) {
+      player2.projectiles[i].draw(this.context, this.cameraX);
+    }
+  }
+
   // Restore context (remove camera transform for HUD)
   this.context.restore();
 

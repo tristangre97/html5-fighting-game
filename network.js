@@ -90,13 +90,13 @@ class NetworkManager {
     });
   }
 
-  findMatch() {
+  findMatch(characterData) {
     if (!this.connected) {
       console.error('Not connected to server');
       return;
     }
-    console.log('Finding match...');
-    this.socket.emit('find_match');
+    console.log('Finding match with character:', characterData);
+    this.socket.emit('find_match', { characterData: characterData });
   }
 
   sendInput(input) {

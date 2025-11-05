@@ -46,6 +46,11 @@ class ServerPlayer {
     // Pit damage
     this.PIT_DAMAGE = 0.1; // per millisecond
 
+    // Projectile support
+    this.projectiles = [];
+    this.lastProjectileTime = 0;
+    this.projectileData = (characterData && characterData.projectile) ? characterData.projectile : null;
+
     // Input state
     this.input = {
       left: false,
@@ -53,7 +58,8 @@ class ServerPlayer {
       jump: false,
       punch: false,
       throw: false,
-      block: false
+      block: false,
+      projectile: false
     };
   }
 
@@ -90,6 +96,9 @@ class ServerPlayer {
       if (this.input.throw && this.action === 'idle') {
         this.throw_em(opponent);
       }
+      if (this.input.projectile && this.action === 'idle') {
+        this.fireProjectile(Date.now());
+      }
 
       // Update facing direction based on opponent
       if (opponent) {
@@ -107,10 +116,68 @@ class ServerPlayer {
     // Apply physics
     this.applyPhysics(dt);
 
+    // Update projectiles
+    this.updateProjectiles(dt, opponent);
+
     // Check pit damage
     if (this.y < -100) {
       this.health -= this.PIT_DAMAGE * dt;
     }
+  }
+
+  updateProjectiles(dt, opponent) {
+    for (let i = this.projectiles.length - 1; i >= 0; i--) {
+      const projectile = this.projectiles[i];
+
+      // Update projectile age and position
+      projectile.age += dt;
+      projectile.x += projectile.dx * dt;
+      projectile.y += projectile.dy * dt;
+
+      // Check lifetime
+      if (projectile.age > projectile.lifetime) {
+        projectile.active = false;
+        this.projectiles.splice(i, 1);
+        continue;
+      }
+
+      // Check bounds
+      if (projectile.x < 0 || projectile.x > this.level.getWidth() || projectile.y < -100) {
+        projectile.active = false;
+        this.projectiles.splice(i, 1);
+        continue;
+      }
+
+      // Check collision with opponent
+      if (opponent) {
+        const hitbox = this.checkProjectileCollision(projectile, opponent);
+        if (hitbox) {
+          opponent.hit(projectile.damage);
+          projectile.active = false;
+          this.projectiles.splice(i, 1);
+        }
+      }
+    }
+  }
+
+  checkProjectileCollision(projectile, opponent) {
+    const SPRITE_HALF_WIDTH = 48;
+    const playerLeft = opponent.x - SPRITE_HALF_WIDTH;
+    const playerRight = opponent.x + SPRITE_HALF_WIDTH;
+    const playerBottom = opponent.y;
+    const playerTop = opponent.y + 96;
+
+    const projLeft = projectile.x - projectile.width / 2;
+    const projRight = projectile.x + projectile.width / 2;
+    const projBottom = projectile.y - projectile.height / 2;
+    const projTop = projectile.y + projectile.height / 2;
+
+    return (
+      projRight > playerLeft &&
+      projLeft < playerRight &&
+      projTop > playerBottom &&
+      projBottom < playerTop
+    );
   }
 
   applyPhysics(dt) {
@@ -188,6 +255,43 @@ class ServerPlayer {
     return false;
   }
 
+  fireProjectile(currentTime) {
+    // Only fire if character has projectile ability
+    if (!this.projectileData) {
+      return null;
+    }
+
+    // Check cooldown
+    const cooldown = this.projectileData.cooldown || 1000;
+    if (currentTime - this.lastProjectileTime < cooldown) {
+      return null;
+    }
+
+    // Create projectile at player position, slightly in front
+    const direction = this.facing_right ? 1 : -1;
+    const offsetX = direction * 30;
+    const projectile = {
+      id: `${this.playerNumber}_${currentTime}`,
+      x: this.x + offsetX,
+      y: this.y + 48,
+      dx: direction * (this.projectileData.speed || 0.5),
+      dy: 0,
+      width: this.projectileData.width || 20,
+      height: this.projectileData.height || 20,
+      damage: this.projectileData.damage || 5,
+      color: this.projectileData.color || '#FFD700',
+      lifetime: this.projectileData.lifetime || 3000,
+      age: 0,
+      active: true,
+      owner: this.playerNumber
+    };
+
+    this.projectiles.push(projectile);
+    this.lastProjectileTime = currentTime;
+
+    return projectile;
+  }
+
   hit(damage) {
     if (this.action === 'block') {
       return; // Blocked!
@@ -261,7 +365,16 @@ class ServerPlayer {
       health: this.health,
       facing_right: this.facing_right,
       action: this.action,
-      action_timer: this.action_timer
+      action_timer: this.action_timer,
+      projectiles: this.projectiles.map(p => ({
+        id: p.id,
+        x: p.x,
+        y: p.y,
+        width: p.width,
+        height: p.height,
+        color: p.color,
+        active: p.active
+      }))
     };
   }
 }

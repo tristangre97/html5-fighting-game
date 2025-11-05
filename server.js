@@ -23,8 +23,11 @@ let waitingPlayer = null;
 io.on('connection', (socket) => {
   console.log(`Player connected: ${socket.id}`);
 
-  socket.on('find_match', () => {
-    console.log(`Player ${socket.id} looking for match`);
+  socket.on('find_match', (data) => {
+    console.log(`Player ${socket.id} looking for match with character:`, data?.characterData?.name);
+
+    // Store character data on socket
+    socket.characterData = data?.characterData;
 
     if (waitingPlayer && waitingPlayer.id !== socket.id) {
       // Match found! Create a new game room
@@ -32,8 +35,15 @@ io.on('connection', (socket) => {
       const player1 = waitingPlayer;
       const player2 = socket;
 
-      // Create game room
-      const gameRoom = new GameRoom(roomId, player1, player2, io);
+      // Create game room with character data
+      const gameRoom = new GameRoom(
+        roomId,
+        player1,
+        player2,
+        io,
+        player1.characterData,
+        player2.characterData
+      );
       gameRooms.set(roomId, gameRoom);
 
       // Join both players to the room

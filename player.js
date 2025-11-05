@@ -49,6 +49,11 @@ function Player(x, sprite_sheet, facing_right, characterData, playerName) {
   this.THROWN_SPEED = -.5;
   this.THROWN_TIME = 600;
 
+  // Projectile support
+  this.projectiles = [];
+  this.lastProjectileTime = 0;
+  this.projectileData = (characterData && characterData.projectile) ? characterData.projectile : null;
+
   this.moveLeft = function(dtScale) {
     if (this.action != ACTION_IDLE) {
       return;
@@ -133,6 +138,33 @@ function Player(x, sprite_sheet, facing_right, characterData, playerName) {
     }
   }
 
+  this.fireProjectile = function(currentTime) {
+    // Only fire if character has projectile ability
+    if (!this.projectileData) {
+      return;
+    }
+
+    // Check cooldown
+    var cooldown = this.projectileData.cooldown || 1000;
+    if (currentTime - this.lastProjectileTime < cooldown) {
+      return;
+    }
+
+    // Create projectile at player position, slightly in front
+    var direction = this.facing_right ? 1 : -1;
+    var offsetX = direction * 30; // Spawn projectile slightly in front
+    var projectile = new Projectile(
+      this.x + offsetX,
+      this.y + 48, // Mid-height of player sprite
+      direction,
+      this,
+      this.projectileData
+    );
+
+    this.projectiles.push(projectile);
+    this.lastProjectileTime = currentTime;
+  }
+
   this.thrown = function(damage) {
     this.health -= damage;
     this.setAction(ACTION_THROWN);
@@ -192,7 +224,7 @@ function Player(x, sprite_sheet, facing_right, characterData, playerName) {
       this.dy = 0;
     }
     this.y = newY;
-    
+
     if (this.action_timer > 0) {
       this.action_timer -= dt;
 
@@ -203,6 +235,23 @@ function Player(x, sprite_sheet, facing_right, characterData, playerName) {
     }
 
     this.facing_right = (this.x < this.other_player.x);
+
+    // Update projectiles
+    for (var i = this.projectiles.length - 1; i >= 0; i--) {
+      var projectile = this.projectiles[i];
+      projectile.update(dt);
+
+      // Check collision with other player
+      if (this.other_player && projectile.checkCollision(this.other_player)) {
+        this.other_player.hit(projectile.damage);
+        projectile.active = false;
+      }
+
+      // Remove inactive projectiles
+      if (!projectile.active) {
+        this.projectiles.splice(i, 1);
+      }
+    }
   }
 
   this.isAlive = function() {
