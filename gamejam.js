@@ -703,12 +703,12 @@ $(document).ready(function() {
   });
 
   // Set up player name inputs
-  $('#p1-name-input').on('input', function() {
+  $('#p1-name-input').bind('input', function() {
     var name = $(this).val().trim();
     player1Name = name || 'Player 1';
   });
 
-  $('#p2-name-input').on('input', function() {
+  $('#p2-name-input').bind('input', function() {
     var name = $(this).val().trim();
     player2Name = name || 'Player 2';
   });
