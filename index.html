@@ -26,18 +26,6 @@ limitations under the License.
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel='stylesheet' type='text/css' href='style.css' />
 
-<script src='http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.js'></script>
-<script src='/socket.io/socket.io.js'></script>
-
-<script src='window.js'></script>
-<script src='level.js'></script>
-<script src='sprite.js'></script>
-<script src='player.js'></script>
-<script src='network.js'></script>
-<script src='gamepad.js'></script>
-<script src='touchcontrols.js'></script>
-<script src='gamejam.js'></script>
-
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600;700&display=swap');
 
@@ -488,6 +476,18 @@ limitations under the License.
     <div id="btn-throw" class="touch-button">THROW</div>
     <div id="btn-block" class="touch-button">BLOCK</div>
   </div>
+
+  <!-- Load scripts after DOM is ready -->
+  <script src='http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.js'></script>
+  <script src='/socket.io/socket.io.js'></script>
+  <script src='window.js'></script>
+  <script src='level.js'></script>
+  <script src='sprite.js'></script>
+  <script src='player.js'></script>
+  <script src='network.js'></script>
+  <script src='gamepad.js'></script>
+  <script src='touchcontrols.js'></script>
+  <script src='gamejam.js'></script>
 
 </body>
 </html>
